@@ -3,7 +3,6 @@
 import prisma from "@/lib/prisma";
 import { getDbUserId } from "./user.action";
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@prisma/client";
 
 export async function createPost(content: string, image: string) {
   try {
@@ -157,7 +156,7 @@ export async function createComment(postId: string, content: string) {
     if (!post) throw new Error("Post not found");
 
     // Create comment and notification in a transaction
-    const [comment] = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const [comment] = await prisma.$transaction(async (tx) => {
       // Create comment first
       const newComment = await tx.comment.create({
         data: {

@@ -7,9 +7,9 @@ import { Avatar, AvatarImage } from "./ui/avatar";
 import { Textarea } from "./ui/textarea";
 import { ImageIcon, Loader2Icon, SendIcon } from "lucide-react";
 import { Button } from "./ui/button";
-import { createPost } from "../actions/post.action";
+import { createPost } from "@/actions/post.action";
 import toast from "react-hot-toast";
-//import ImageUpload from "./ImageUpload";
+import ImageUpload from "./ImageUpload";
 
 function CreatePost() {
   const { user } = useUser();
@@ -21,20 +21,25 @@ function CreatePost() {
   const handleSubmit = async () => {
     if (!content.trim() && !imageUrl) return;
 
+    console.log("Création du post avec:", { content, imageUrl });
     setIsPosting(true);
     try {
       const result = await createPost(content, imageUrl);
+      console.log("Résultat de la création:", result);
+
       if (result?.success) {
         // reset the form
         setContent("");
         setImageUrl("");
         setShowImageUpload(false);
 
-        toast.success("Yeahh Ton post à été crée !");
+        toast.success("Post créé avec succès!");
+      } else {
+        toast.error("Échec de la création du post");
       }
     } catch (error) {
-      console.error("Failed to create post:", error);
-      toast.error("Failed to create post");
+      console.error("Erreur lors de la création du post:", error);
+      toast.error("Échec de la création du post");
     } finally {
       setIsPosting(false);
     }
@@ -58,8 +63,16 @@ function CreatePost() {
           </div>
 
           {(showImageUpload || imageUrl) && (
-            <div className="border rounded-lg p-4">
-             
+            <div className="border rounded-lg p-4 bg-muted/30">
+              <ImageUpload
+                endpoint="postImage"
+                value={imageUrl}
+                onChange={(url) => {
+                  console.log("URL de l'image changée:", url);
+                  setImageUrl(url);
+                  if (!url) setShowImageUpload(false);
+                }}
+              />
             </div>
           )}
 
