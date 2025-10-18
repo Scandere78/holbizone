@@ -21,11 +21,11 @@ function CreatePost() {
   const handleSubmit = async () => {
     if (!content.trim() && !imageUrl) return;
 
-    console.log("Création du post avec:", { content, imageUrl });
     setIsPosting(true);
     try {
+      console.log("Submitting post with:", { content, imageUrl });
       const result = await createPost(content, imageUrl);
-      console.log("Résultat de la création:", result);
+      console.log("Result from createPost:", result);
 
       if (result?.success) {
         // reset the form
@@ -33,13 +33,13 @@ function CreatePost() {
         setImageUrl("");
         setShowImageUpload(false);
 
-        toast.success("Post créé avec succès!");
+        toast.success("Post created successfully");
       } else {
-        toast.error("Échec de la création du post");
+        toast.error(result?.error || "Failed to create post");
       }
     } catch (error) {
-      console.error("Erreur lors de la création du post:", error);
-      toast.error("Échec de la création du post");
+      console.error("Failed to create post:", error);
+      toast.error("Failed to create post");
     } finally {
       setIsPosting(false);
     }
@@ -63,12 +63,11 @@ function CreatePost() {
           </div>
 
           {(showImageUpload || imageUrl) && (
-            <div className="border rounded-lg p-4 bg-muted/30">
+            <div className="border rounded-lg p-4">
               <ImageUpload
                 endpoint="postImage"
                 value={imageUrl}
                 onChange={(url) => {
-                  console.log("URL de l'image changée:", url);
                   setImageUrl(url);
                   if (!url) setShowImageUpload(false);
                 }}

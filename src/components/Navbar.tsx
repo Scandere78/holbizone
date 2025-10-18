@@ -31,7 +31,7 @@ async function Navbar() {
             </Link>
           </div>
 
-          <DesktopNavbar user={null} />
+          <DesktopNavbar />
           <MobileNavbar />
         </div>
       </div>
