@@ -1,86 +1,79 @@
-"use client";
-
-import {
-  BellIcon,
-  HomeIcon,
-  LogOutIcon,
-  MenuIcon,
-  MoonIcon,
-  SunIcon,
-  UserIcon,
-} from "lucide-react";
+import { BellIcon, HomeIcon, MenuIcon, UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
-import { useAuth, SignInButton, SignOutButton } from "@clerk/nextjs";
-import { useTheme } from "next-themes";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import Link from "next/link";
+import { SignInButton, UserButton } from "@clerk/nextjs";
+import ModeToggle from "./ModeToggle";
+import NotificationBadge from "./NotificationBadge";
+import type { User } from "@clerk/nextjs/server";
+import { Suspense } from "react";
 
-function MobileNavbar() {
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const { isSignedIn } = useAuth();
-  const { theme, setTheme } = useTheme();
+interface MobileNavbarProps {
+  user: User | null;
+}
 
+function MobileNavbar({ user }: MobileNavbarProps) {
   return (
-    <div className="flex md:hidden items-center space-x-2">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-        className="mr-2"
-      >
-        <SunIcon className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-        <MoonIcon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-        <span className="sr-only">Toggle theme</span>
-      </Button>
-
-      <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+    <div className="md:hidden flex items-center gap-2">
+      <ModeToggle />
+      {user && <UserButton />}
+      
+      <Sheet>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon">
             <MenuIcon className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="right" className="w-[300px]">
+        <SheetContent>
           <SheetHeader>
-            <SheetTitle>Menu</SheetTitle>
+            <SheetTitle className="text-left bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+              Menu
+            </SheetTitle>
           </SheetHeader>
-          <nav className="flex flex-col space-y-4 mt-6">
-            <Button variant="ghost" className="flex items-center gap-3 justify-start" asChild>
+          <div className="flex flex-col space-y-4 mt-4">
+            <Button variant="ghost" className="justify-start" asChild>
               <Link href="/">
-                <HomeIcon className="w-4 h-4" />
+                <HomeIcon className="w-5 h-5 mr-2" />
                 Home
               </Link>
             </Button>
 
-            {isSignedIn ? (
+            {user ? (
               <>
-                <Button variant="ghost" className="flex items-center gap-3 justify-start" asChild>
+                <Button variant="ghost" className="justify-start relative" asChild>
                   <Link href="/notifications">
-                    <BellIcon className="w-4 h-4" />
+                    <BellIcon className="w-5 h-5 mr-2" />
                     Notifications
+                    <Suspense fallback={null}>
+                      <NotificationBadge />
+                    </Suspense>
                   </Link>
                 </Button>
-                <Button variant="ghost" className="flex items-center gap-3 justify-start" asChild>
-                  <Link href="/profile">
-                    <UserIcon className="w-4 h-4" />
+                <Button variant="ghost" className="justify-start" asChild>
+                  <Link
+                    href={`/profile/${
+                      user.username ?? user.emailAddresses[0].emailAddress.split("@")[0]
+                    }`}
+                  >
+                    <UserIcon className="w-5 h-5 mr-2" />
                     Profile
                   </Link>
                 </Button>
-                <SignOutButton>
-                  <Button variant="ghost" className="flex items-center gap-3 justify-start w-full">
-                    <LogOutIcon className="w-4 h-4" />
-                    Logout
-                  </Button>
-                </SignOutButton>
               </>
             ) : (
               <SignInButton mode="modal">
-                <Button variant="default" className="w-full">
+                <Button variant="default" className="w-full bg-gradient-to-r from-red-600 to-orange-600">
                   Sign In
                 </Button>
               </SignInButton>
             )}
-          </nav>
+          </div>
         </SheetContent>
       </Sheet>
     </div>
