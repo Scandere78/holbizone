@@ -58,7 +58,7 @@ export async function getDbUserId() {
 
   const user = await getUserByClerkId(clerkId);
 
-  if (!user) throw new Error("User not found");
+  if (!user) return null;
 
   return user.id;
 }
@@ -102,6 +102,52 @@ export async function getRandomUsers() {
     return randomUsers;
   } catch (error) {
     console.log("Error fetching random users", error);
+    return [];
+  }
+}
+
+export async function getAllUsers() {
+  try {
+    const userId = await getDbUserId();
+
+    const users = await prisma.user.findMany({
+      where: {
+        NOT: {
+          id: userId || undefined,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        image: true,
+        bio: true,
+        _count: {
+          select: {
+            followers: true,
+            following: true,
+            posts: true,
+          },
+        },
+        followers: userId
+          ? {
+              where: {
+                followerId: userId,
+              },
+              select: {
+                followerId: true,
+              },
+            }
+          : false,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return users;
+  } catch (error) {
+    console.log("Error fetching all users", error);
     return [];
   }
 }

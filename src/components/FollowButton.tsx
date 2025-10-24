@@ -6,17 +6,32 @@ import { Loader2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 import { toggleFollow } from "@/actions/user.action";
 
-function FollowButton({ userId }: { userId: string }) {
+function FollowButton({
+  userId,
+  targetUserId,
+  isFollowing = false,
+}: {
+  userId?: string;
+  targetUserId?: string;
+  isFollowing?: boolean;
+}) {
+  const [following, setFollowing] = useState(isFollowing);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleFollow = async () => {
     setIsLoading(true);
 
     try {
-      await toggleFollow(userId);
-      toast.success("User followed successfully");
+      const id = targetUserId || userId;
+      if (!id) throw new Error("User ID is required");
+
+      await toggleFollow(id);
+      setFollowing(!following);
+      toast.success(
+        following ? "Unfollowed successfully" : "Followed successfully"
+      );
     } catch (error) {
-      toast.error("Error following user");
+      toast.error("Error toggling follow");
     } finally {
       setIsLoading(false);
     }
@@ -25,12 +40,18 @@ function FollowButton({ userId }: { userId: string }) {
   return (
     <Button
       size={"sm"}
-      variant={"secondary"}
+      variant={following ? "outline" : "secondary"}
       onClick={handleFollow}
       disabled={isLoading}
-      className="w-20"
+      className="w-24"
     >
-      {isLoading ? <Loader2Icon className="size-4 animate-spin" /> : "Follow"}
+      {isLoading ? (
+        <Loader2Icon className="size-4 animate-spin" />
+      ) : following ? (
+        "Following"
+      ) : (
+        "Follow"
+      )}
     </Button>
   );
 }

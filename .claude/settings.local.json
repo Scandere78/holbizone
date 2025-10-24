@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir \"C:\\Users\\scand\\OneDrive\\Bureau\\PROJET\\holbihub\\Documentation\" /S /B)"
+      "Bash(dir \"C:\\Users\\scand\\OneDrive\\Bureau\\PROJET\\holbihub\\Documentation\" /S /B)",
+      "Bash(npx prisma generate)"
     ],
     "deny": [],
     "ask": []

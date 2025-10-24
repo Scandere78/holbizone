@@ -1,13 +1,25 @@
 import Link from "next/link";
 import DesktopNavbar from "./DesktopNavbar";
-import MobileNavbar from "./MobileNavbar";
 import { currentUser } from "@clerk/nextjs/server";
 import { syncUser } from "@/actions/user.action";
 import Image from "next/image";
 
 async function Navbar() {
-  const user = await currentUser();
-  if (user) await syncUser(); // POST
+  const clerkUser = await currentUser();
+  if (clerkUser) await syncUser(); // POST
+
+  // Sérialiser les données du user pour les Client Components
+  const user = clerkUser ? {
+    id: clerkUser.id,
+    username: clerkUser.username,
+    firstName: clerkUser.firstName,
+    lastName: clerkUser.lastName,
+    fullName: clerkUser.fullName,
+    imageUrl: clerkUser.imageUrl,
+    emailAddresses: clerkUser.emailAddresses.map(email => ({
+      emailAddress: email.emailAddress
+    }))
+  } : null;
 
   return (
     <nav className="sticky top-0 w-full border-b border-red-100/50 dark:border-red-950/50 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60 z-50 shadow-sm">
@@ -32,7 +44,6 @@ async function Navbar() {
           </div>
 
           <DesktopNavbar user={user} />
-          <MobileNavbar user={user} />
         </div>
       </div>
     </nav>
