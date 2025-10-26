@@ -6,9 +6,12 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import  Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import WhoToFollow from "@/components/WhoToFollow";
-import MobileNavbar from "@/components/MobileNavbar";
+import MobileNavWrapper from "@/components/MobileNavWrapper";
 import { Toaster } from "react-hot-toast";
 import { currentUser } from "@clerk/nextjs/server";
+import { syncUser } from "@/actions/user.action";
+import { getUnreadMessagesCount } from "@/actions/message.action";
+import { getUnreadNotificationCount } from "@/actions/notification.action";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -32,6 +35,18 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const clerkUser = await currentUser();
+  
+  // Fetch badge counts and sync user in parallel
+  let unreadMessages = 0;
+  let unreadNotifications = 0;
+  
+  if (clerkUser) {
+    [unreadMessages, unreadNotifications] = await Promise.all([
+      getUnreadMessagesCount(),
+      getUnreadNotificationCount(),
+      syncUser()
+    ]);
+  }
 
   // Sérialiser les données du user pour les Client Components
   const user = clerkUser ? {
@@ -65,7 +80,11 @@ export default async function RootLayout({
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-pink-200/20 dark:bg-pink-500/5 rounded-full blur-3xl" />
 
             <div className="relative z-10">
-              <Navbar/>
+              <Navbar 
+                user={user}
+                unreadMessages={unreadMessages}
+                unreadNotifications={unreadNotifications}
+              />
 
               <main className="py-6 md:py-8 mb-16 md:mb-0">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -85,8 +104,8 @@ export default async function RootLayout({
             </div>
           </div>
 
-          {/* Mobile Navbar en bas uniquement */}
-          {user && <MobileNavbar user={user} />}
+          {/* Mobile Navbar en bas - se met à jour automatiquement */}
+          <MobileNavWrapper initialUser={user} />
 
           <Toaster
             position="top-center"

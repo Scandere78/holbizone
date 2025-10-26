@@ -3,17 +3,17 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import ModeToggle from "./ModeToggle";
-import NotificationBadge from "./NotificationBadge";
-import MessageBadge from "./MessageBadge";
+import { Badge } from "@/components/ui/badge";
 import type { User } from "@clerk/nextjs/server";
-import { Suspense } from "react";
 import { SerializedUser } from "@/types/user";
 
 interface DesktopNavbarProps {
-  user: SerializedUser;
+  user: SerializedUser | null;
+  unreadMessages: number;
+  unreadNotifications: number;
 }
 
-function DesktopNavbar({ user }: DesktopNavbarProps) {
+function DesktopNavbar({ user, unreadMessages, unreadNotifications }: DesktopNavbarProps) {
   return (
     <div className="hidden md:flex items-center space-x-4">
       <ModeToggle />
@@ -50,9 +50,14 @@ function DesktopNavbar({ user }: DesktopNavbarProps) {
             <Link href="/messages">
               <MessageCircle className="w-5 h-5" />
               <span className="hidden lg:inline">Messages</span>
-              <Suspense fallback={null}>
-                <MessageBadge />
-              </Suspense>
+              {unreadMessages > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 px-1 text-xs font-bold bg-gradient-to-r from-red-600 to-orange-600 border-0 shadow-lg"
+                >
+                  {unreadMessages > 99 ? "99+" : unreadMessages}
+                </Badge>
+              )}
             </Link>
           </Button>
 
@@ -64,9 +69,14 @@ function DesktopNavbar({ user }: DesktopNavbarProps) {
             <Link href="/notifications">
               <BellIcon className="w-5 h-5" />
               <span className="hidden lg:inline">Notifications</span>
-              <Suspense fallback={null}>
-                <NotificationBadge />
-              </Suspense>
+              {unreadNotifications > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 min-w-[20px] flex items-center justify-center p-1 text-xs font-bold bg-gradient-to-r from-red-600 to-orange-600 border-0 animate-pulse shadow-lg"
+                >
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </Badge>
+              )}
             </Link>
           </Button>
           

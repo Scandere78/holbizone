@@ -1,6 +1,6 @@
 "use client";
 
-import { BellIcon, HomeIcon, MessageCircleIcon, SearchIcon, MenuIcon } from "lucide-react";
+import { BellIcon, HomeIcon, MessageCircleIcon, SearchIcon, MenuIcon, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
@@ -13,19 +13,23 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { UserButton } from "@clerk/nextjs";
+import { SignInButton, useClerk } from "@clerk/nextjs";
 import { Separator } from "@/components/ui/separator";
 
 interface MobileNavbarProps {
-  user: SerializedUser;
+  user: SerializedUser | null;
 }
 
 function MobileNavbar({ user }: MobileNavbarProps) {
   const pathname = usePathname();
-
-  if (!user) return null;
+  const { signOut } = useClerk();
 
   const isActive = (path: string) => pathname === path;
+
+  // Si pas d'utilisateur, ne rien afficher (évite l'erreur Clerk)
+  if (!user) {
+    return null;
+  }
 
   return (
     <>
@@ -139,7 +143,9 @@ function MobileNavbar({ user }: MobileNavbarProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">{user.fullName || user.username}</p>
-                    <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      @{user.username || user.emailAddresses[0]?.emailAddress.split("@")[0] || "user"}
+                    </p>
                   </div>
                 </div>
 
@@ -185,18 +191,15 @@ function MobileNavbar({ user }: MobileNavbarProps) {
 
                 <Separator />
 
-                {/* Sign Out */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Se déconnecter</span>
-                  <UserButton 
-                    afterSignOutUrl="/"
-                    appearance={{
-                      elements: {
-                        avatarBox: "w-8 h-8"
-                      }
-                    }}
-                  />
-                </div>
+                {/* Sign Out Button */}
+                <Button 
+                  variant="ghost" 
+                  className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                  onClick={() => signOut()}
+                >
+                  <LogOut className="w-5 h-5 mr-2" />
+                  Se déconnecter
+                </Button>
               </div>
             </SheetContent>
           </Sheet>

@@ -8,7 +8,7 @@ async function MessagesPage() {
   const conversations = await getUserConversations();
 
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)]">
+    <div className="max-w-7xl mx-auto h-[calc(100vh-12rem)] md:h-[calc(100vh-8rem)]">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
         {/* Liste des conversations */}
         <div className="md:col-span-1 border-r border-red-100 dark:border-red-950/50 pr-4 overflow-hidden flex flex-col">

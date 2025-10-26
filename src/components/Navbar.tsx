@@ -1,25 +1,15 @@
 import Link from "next/link";
-import DesktopNavbar from "./DesktopNavbar";
-import { currentUser } from "@clerk/nextjs/server";
-import { syncUser } from "@/actions/user.action";
+import NavbarWrapper from "./NavbarWrapper";
 import Image from "next/image";
+import { SerializedUser } from "@/types/user";
 
-async function Navbar() {
-  const clerkUser = await currentUser();
-  if (clerkUser) await syncUser(); // POST
+interface NavbarProps {
+  user: SerializedUser | null;
+  unreadMessages: number;
+  unreadNotifications: number;
+}
 
-  // Sérialiser les données du user pour les Client Components
-  const user = clerkUser ? {
-    id: clerkUser.id,
-    username: clerkUser.username,
-    firstName: clerkUser.firstName,
-    lastName: clerkUser.lastName,
-    fullName: clerkUser.fullName,
-    imageUrl: clerkUser.imageUrl,
-    emailAddresses: clerkUser.emailAddresses.map(email => ({
-      emailAddress: email.emailAddress
-    }))
-  } : null;
+function Navbar({ user, unreadMessages, unreadNotifications }: NavbarProps) {
 
   return (
     <nav className="sticky top-0 w-full border-b border-red-100/50 dark:border-red-950/50 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60 z-50 shadow-sm">
@@ -43,7 +33,11 @@ async function Navbar() {
             </Link>
           </div>
 
-          <DesktopNavbar user={user} />
+          <NavbarWrapper 
+            initialUser={user} 
+            unreadMessages={unreadMessages}
+            unreadNotifications={unreadNotifications}
+          />
         </div>
       </div>
     </nav>

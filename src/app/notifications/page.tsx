@@ -133,7 +133,7 @@ function NotificationsPage() {
         </CardHeader>
 
         <CardContent className="p-0">
-          <ScrollArea className="h-[calc(100vh-16rem)]">
+          <ScrollArea className="h-[calc(100vh-20rem)] md:h-[calc(100vh-16rem)]">
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                 <BellIcon className="h-20 w-20 text-muted-foreground/20 mb-4" />
