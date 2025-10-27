@@ -4,16 +4,14 @@ import prisma from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
 import { getDbUserId } from "./user.action";
 import { revalidatePath } from "next/cache";
+import { SendMessageSchema, CreateConversationSchema } from "@/lib/validations/message.validation";
+import { z } from "zod";
 
-/**
- * Créer ou récupérer une conversation privée entre 2 utilisateurs
- */
 export async function getOrCreatePrivateConversation(otherUserId: string) {
   try {
     const userId = await getDbUserId();
     if (!userId) throw new Error("Unauthorized");
 
-    // Chercher une conversation existante entre ces 2 utilisateurs
     const existingConversation = await prisma.conversation.findFirst({
       where: {
         isGroup: false,
@@ -63,7 +61,6 @@ export async function getOrCreatePrivateConversation(otherUserId: string) {
       return { success: true, conversation: existingConversation };
     }
 
-    // Créer une nouvelle conversation
     const newConversation = await prisma.conversation.create({
       data: {
         isGroup: false,
@@ -111,28 +108,32 @@ export async function getOrCreatePrivateConversation(otherUserId: string) {
   }
 }
 
-/**
- * Créer un groupe
- */
 export async function createGroupConversation(data: {
   name: string;
   memberIds: string[];
   image?: string;
 }) {
   try {
+    const validatedData = CreateConversationSchema.parse({
+      ...data,
+      isGroup: true,
+    });
+
     const userId = await getDbUserId();
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
 
     const conversation = await prisma.conversation.create({
       data: {
-        name: data.name,
-        image: data.image,
+        name: validatedData.name,
+        image: validatedData.image,
         isGroup: true,
         creatorId: userId,
         members: {
           create: [
             { userId: userId, role: "admin" },
-            ...data.memberIds.map((id) => ({ userId: id, role: "member" })),
+            ...validatedData.memberIds.map((id) => ({ userId: id, role: "member" })),
           ],
         },
       },
@@ -169,13 +170,19 @@ export async function createGroupConversation(data: {
     return { success: true, conversation };
   } catch (error) {
     console.error("Error creating group:", error);
+    
+    // CORRIGÉ: issues au lieu de errors
+    if (error instanceof z.ZodError) {
+      return { 
+        success: false, 
+        error: error.issues[0]?.message || "Données invalides" 
+      };
+    }
+    
     return { success: false, error: "Failed to create group" };
   }
 }
 
-/**
- * Récupérer toutes les conversations de l'utilisateur
- */
 export async function getUserConversations() {
   try {
     const userId = await getDbUserId();
@@ -226,15 +233,11 @@ export async function getUserConversations() {
   }
 }
 
-/**
- * Récupérer les messages d'une conversation
- */
 export async function getConversationMessages(conversationId: string) {
   try {
     const userId = await getDbUserId();
     if (!userId) return [];
 
-    // Vérifier que l'utilisateur est membre
     const isMember = await prisma.conversationMember.findUnique({
       where: {
         userId_conversationId: {
@@ -261,7 +264,6 @@ export async function getConversationMessages(conversationId: string) {
       orderBy: { createdAt: "asc" },
     });
 
-    // Marquer comme lu
     await prisma.conversationMember.update({
       where: {
         userId_conversationId: {
@@ -281,36 +283,38 @@ export async function getConversationMessages(conversationId: string) {
   }
 }
 
-/**
- * Envoyer un message
- */
 export async function sendMessage(data: {
   conversationId: string;
   content: string;
   image?: string;
 }) {
   try {
-    const userId = await getDbUserId();
-    if (!userId) throw new Error("Unauthorized");
+    const validatedData = SendMessageSchema.parse(data);
 
-    // Vérifier que l'utilisateur est membre
+    const userId = await getDbUserId();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
     const isMember = await prisma.conversationMember.findUnique({
       where: {
         userId_conversationId: {
           userId,
-          conversationId: data.conversationId,
+          conversationId: validatedData.conversationId,
         },
       },
     });
 
-    if (!isMember) throw new Error("Not a member of this conversation");
+    if (!isMember) {
+      return { success: false, error: "Not a member of this conversation" };
+    }
 
     const message = await prisma.message.create({
       data: {
-        content: data.content,
-        image: data.image,
+        content: validatedData.content,
+        image: validatedData.image,
         senderId: userId,
-        conversationId: data.conversationId,
+        conversationId: validatedData.conversationId,
       },
       include: {
         sender: {
@@ -324,30 +328,34 @@ export async function sendMessage(data: {
       },
     });
 
-    // Mettre à jour la conversation
     await prisma.conversation.update({
-      where: { id: data.conversationId },
+      where: { id: validatedData.conversationId },
       data: { updatedAt: new Date() },
     });
 
-    // Émettre l'événement Pusher pour le temps réel
     await pusherServer.trigger(
-      `conversation-${data.conversationId}`,
+      `conversation-${validatedData.conversationId}`,
       "new-message",
       message
     );
 
-    revalidatePath(`/messages/${data.conversationId}`);
+    revalidatePath(`/messages/${validatedData.conversationId}`);
     return { success: true, message };
   } catch (error) {
     console.error("Error sending message:", error);
+    
+    // CORRIGÉ: issues au lieu de errors
+    if (error instanceof z.ZodError) {
+      return { 
+        success: false, 
+        error: error.issues[0]?.message || "Données invalides" 
+      };
+    }
+    
     return { success: false, error: "Failed to send message" };
   }
 }
 
-/**
- * Compter les messages non lus
- */
 export async function getUnreadMessagesCount() {
   try {
     const userId = await getDbUserId();
@@ -388,15 +396,11 @@ export async function getUnreadMessagesCount() {
   }
 }
 
-/**
- * Récupérer les amis mutuels (follow bidirectionnel) pour démarrer une conversation
- */
 export async function getAvailableUsersForChat() {
   try {
     const userId = await getDbUserId();
     if (!userId) return [];
 
-    // Récupérer les utilisateurs qu'on suit
     const following = await prisma.follows.findMany({
       where: {
         followerId: userId,
@@ -408,7 +412,6 @@ export async function getAvailableUsersForChat() {
 
     const followingIds = following.map((f) => f.followingId);
 
-    // Récupérer ceux qui nous suivent en retour (amis mutuels)
     const mutualFriends = await prisma.user.findMany({
       where: {
         id: {
@@ -433,7 +436,6 @@ export async function getAvailableUsersForChat() {
       },
     });
 
-    // Récupérer toutes les conversations privées existantes
     const existingConversations = await prisma.conversation.findMany({
       where: {
         isGroup: false,
@@ -452,14 +454,12 @@ export async function getAvailableUsersForChat() {
       },
     });
 
-    // Extraire les IDs des utilisateurs avec qui on a déjà une conversation
     const existingUserIds = existingConversations.flatMap((conv) =>
       conv.members
         .filter((member) => member.userId !== userId)
         .map((member) => member.userId)
     );
 
-    // Filtrer pour ne garder que ceux avec qui on n'a pas encore de conversation
     const availableUsers = mutualFriends.filter(
       (user) => !existingUserIds.includes(user.id)
     );

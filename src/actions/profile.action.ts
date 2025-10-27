@@ -4,25 +4,27 @@ import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getDbUserId } from "./user.action";
+import { UpdateProfileSchema } from "@/lib/validations/user.validation";
+import { z } from "zod";
 
 export async function getProfileByUsername(username: string) {
   try {
     const user = await prisma.user.findUnique({
-      where: { username: username },
+      where: { username },
       select: {
         id: true,
         name: true,
         username: true,
-        bio: true,
         image: true,
+        bio: true,
         location: true,
         website: true,
         createdAt: true,
         _count: {
           select: {
+            posts: true,
             followers: true,
             following: true,
-            posts: true,
           },
         },
       },
@@ -31,16 +33,15 @@ export async function getProfileByUsername(username: string) {
     return user;
   } catch (error) {
     console.error("Error fetching profile:", error);
-    throw new Error("Failed to fetch profile");
+    return null;
   }
 }
 
 export async function getUserPosts(userId: string) {
   try {
     const posts = await prisma.post.findMany({
-      where: {
-        authorId: userId,
-      },
+      where: { authorId: userId },
+      orderBy: { createdAt: "desc" },
       include: {
         author: {
           select: {
@@ -55,9 +56,9 @@ export async function getUserPosts(userId: string) {
             author: {
               select: {
                 id: true,
-                name: true,
                 username: true,
                 image: true,
+                name: true,
               },
             },
           },
@@ -76,39 +77,22 @@ export async function getUserPosts(userId: string) {
             comments: true,
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
       },
     });
 
     return posts;
   } catch (error) {
     console.error("Error fetching user posts:", error);
-    throw new Error("Failed to fetch user posts");
+    return [];
   }
 }
 
 export async function getUserLikedPosts(userId: string) {
   try {
-    const likedPosts = await prisma.post.findMany({
-      where: {
-        likes: {
-          some: {
-            userId,
-          },
-        },
-      },
+    const likedPosts = await prisma.like.findMany({
+      where: { userId },
       include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            image: true,
-          },
-        },
-        comments: {
+        post: {
           include: {
             author: {
               select: {
@@ -118,20 +102,32 @@ export async function getUserLikedPosts(userId: string) {
                 image: true,
               },
             },
-          },
-          orderBy: {
-            createdAt: "asc",
-          },
-        },
-        likes: {
-          select: {
-            userId: true,
-          },
-        },
-        _count: {
-          select: {
-            likes: true,
-            comments: true,
+            comments: {
+              include: {
+                author: {
+                  select: {
+                    id: true,
+                    username: true,
+                    image: true,
+                    name: true,
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: "asc",
+              },
+            },
+            likes: {
+              select: {
+                userId: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: true,
+                comments: true,
+              },
+            },
           },
         },
       },
@@ -140,10 +136,10 @@ export async function getUserLikedPosts(userId: string) {
       },
     });
 
-    return likedPosts;
+    return likedPosts.map((like) => like.post);
   } catch (error) {
     console.error("Error fetching liked posts:", error);
-    throw new Error("Failed to fetch liked posts");
+    return [];
   }
 }
 
@@ -152,18 +148,22 @@ export async function updateProfile(formData: FormData) {
     const { userId: clerkId } = await auth();
     if (!clerkId) throw new Error("Unauthorized");
 
-    const name = formData.get("name") as string;
-    const bio = formData.get("bio") as string;
-    const location = formData.get("location") as string;
-    const website = formData.get("website") as string;
+    const data = {
+      name: formData.get("name") as string,
+      bio: formData.get("bio") as string,
+      location: formData.get("location") as string,
+      website: formData.get("website") as string,
+    };
+
+    const validatedData = UpdateProfileSchema.parse(data);
 
     const user = await prisma.user.update({
       where: { clerkId },
       data: {
-        name,
-        bio,
-        location,
-        website,
+        name: validatedData.name,
+        bio: validatedData.bio,
+        location: validatedData.location,
+        website: validatedData.website,
       },
     });
 
@@ -171,6 +171,15 @@ export async function updateProfile(formData: FormData) {
     return { success: true, user };
   } catch (error) {
     console.error("Error updating profile:", error);
+    
+    // CORRIGÉ: issues au lieu de errors
+    if (error instanceof z.ZodError) {
+      return { 
+        success: false, 
+        error: error.issues[0]?.message || "Données invalides" 
+      };
+    }
+    
     return { success: false, error: "Failed to update profile" };
   }
 }

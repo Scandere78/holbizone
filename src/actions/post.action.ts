@@ -3,25 +3,40 @@
 import prisma from "@/lib/prisma";
 import { getDbUserId } from "./user.action";
 import { revalidatePath } from "next/cache";
+import { CreatePostSchema } from "@/lib/validations/post.validation";
+import { z } from "zod";
 
-export async function createPost(content: string, image: string) {
+export async function createPost(content: string, image?: string) {
   try {
-    const userId = await getDbUserId();
+    // Validation Zod
+    const validatedData = CreatePostSchema.parse({ content, image });
 
-    if (!userId) return;
+    const userId = await getDbUserId();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
 
     const post = await prisma.post.create({
       data: {
-        content,
-        image,
+        content: validatedData.content,
+        image: validatedData.image,
         authorId: userId,
       },
     });
 
-    revalidatePath("/"); // purge the cache for the home page
+    revalidatePath("/");
     return { success: true, post };
   } catch (error) {
     console.error("Failed to create post:", error);
+    
+    // Gestion des erreurs Zod - CORRIGÉ: issues au lieu de errors
+    if (error instanceof z.ZodError) {
+      return { 
+        success: false, 
+        error: error.issues[0]?.message || "Données invalides" 
+      };
+    }
+    
     return { success: false, error: "Failed to create post" };
   }
 }
@@ -82,7 +97,6 @@ export async function toggleLike(postId: string) {
     const userId = await getDbUserId();
     if (!userId) return;
 
-    // check if like exists
     const existingLike = await prisma.like.findUnique({
       where: {
         userId_postId: {
@@ -100,7 +114,6 @@ export async function toggleLike(postId: string) {
     if (!post) throw new Error("Post not found");
 
     if (existingLike) {
-      // unlike
       await prisma.like.delete({
         where: {
           userId_postId: {
@@ -110,7 +123,6 @@ export async function toggleLike(postId: string) {
         },
       });
     } else {
-      // like and create notification (only if liking someone else's post)
       await prisma.$transaction([
         prisma.like.create({
           data: {
@@ -123,8 +135,8 @@ export async function toggleLike(postId: string) {
               prisma.notification.create({
                 data: {
                   type: "LIKE",
-                  userId: post.authorId, // recipient (post author)
-                  creatorId: userId, // person who liked
+                  userId: post.authorId,
+                  creatorId: userId,
                   postId,
                 },
               }),
@@ -143,37 +155,46 @@ export async function toggleLike(postId: string) {
 
 export async function createComment(postId: string, content: string) {
   try {
-    const userId = await getDbUserId();
+    // Validation Zod inline pour les commentaires
+    const CreateCommentSchema = z.object({
+      content: z
+        .string()
+        .min(1, "Le commentaire ne peut pas être vide")
+        .max(300, "Le commentaire ne peut pas dépasser 300 caractères")
+        .trim(),
+      postId: z.string().cuid("ID de post invalide"),
+    });
 
-    if (!userId) return;
-    if (!content) throw new Error("Content is required");
+    const validatedData = CreateCommentSchema.parse({ content, postId });
+
+    const userId = await getDbUserId();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
 
     const post = await prisma.post.findUnique({
-      where: { id: postId },
+      where: { id: validatedData.postId },
       select: { authorId: true },
     });
 
     if (!post) throw new Error("Post not found");
 
-    // Create comment and notification in a transaction
     const [comment] = await prisma.$transaction(async (tx) => {
-      // Create comment first
       const newComment = await tx.comment.create({
         data: {
-          content,
+          content: validatedData.content,
           authorId: userId,
-          postId,
+          postId: validatedData.postId,
         },
       });
 
-      // Create notification if commenting on someone else's post
       if (post.authorId !== userId) {
         await tx.notification.create({
           data: {
             type: "COMMENT",
             userId: post.authorId,
             creatorId: userId,
-            postId,
+            postId: validatedData.postId,
             commentId: newComment.id,
           },
         });
@@ -186,6 +207,15 @@ export async function createComment(postId: string, content: string) {
     return { success: true, comment };
   } catch (error) {
     console.error("Failed to create comment:", error);
+    
+    // CORRIGÉ: issues au lieu de errors
+    if (error instanceof z.ZodError) {
+      return { 
+        success: false, 
+        error: error.issues[0]?.message || "Données invalides" 
+      };
+    }
+    
     return { success: false, error: "Failed to create comment" };
   }
 }
@@ -206,7 +236,7 @@ export async function deletePost(postId: string) {
       where: { id: postId },
     });
 
-    revalidatePath("/"); // purge the cache
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     console.error("Failed to delete post:", error);
