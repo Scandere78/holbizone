@@ -13,7 +13,7 @@ interface GlobalErrorBoundaryProps {
 export function GlobalErrorBoundary({ children }: GlobalErrorBoundaryProps) {
   const router = useRouter();
 
-  const handleError = (error: Error, info: { componentStack: string }) => {
+  const handleError = (error: Error, info: { componentStack?: string | null }) => {
     logger.error({
       context: 'GlobalErrorBoundary',
       action: 'React Error Boundary caught error',
