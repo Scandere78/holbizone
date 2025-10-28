@@ -3,7 +3,10 @@
     "allow": [
       "Bash(dir \"C:\\Users\\scand\\OneDrive\\Bureau\\PROJET\\holbihub\\Documentation\" /S /B)",
       "Bash(npx prisma generate)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(cat:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

@@ -6,6 +6,7 @@ import { getDbUserId } from "./user.action";
 import { revalidatePath } from "next/cache";
 import { SendMessageSchema, CreateConversationSchema } from "@/lib/validations/message.validation";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 export async function getOrCreatePrivateConversation(otherUserId: string) {
   try {
@@ -396,6 +397,44 @@ export async function getUnreadMessagesCount() {
   }
 }
 
+export async function getUnreadCountForConversation(conversationId: string) {
+  try {
+    const userId = await getDbUserId();
+    if (!userId) return 0;
+
+    const membership = await prisma.conversationMember.findUnique({
+      where: {
+        userId_conversationId: {
+          userId,
+          conversationId,
+        },
+      },
+      select: {
+        lastReadAt: true,
+      },
+    });
+
+    if (!membership) return 0;
+
+    const unreadCount = await prisma.message.count({
+      where: {
+        conversationId,
+        senderId: {
+          not: userId,
+        },
+        createdAt: {
+          gt: membership.lastReadAt,
+        },
+      },
+    });
+
+    return unreadCount;
+  } catch (error) {
+    console.error("Error counting unread messages for conversation:", error);
+    return 0;
+  }
+}
+
 export async function getAvailableUsersForChat() {
   try {
     const userId = await getDbUserId();
@@ -468,5 +507,98 @@ export async function getAvailableUsersForChat() {
   } catch (error) {
     console.error("Error fetching available users:", error);
     return [];
+  }
+}
+
+
+/**
+ * Récupérer le nom et détails de l'autre utilisateur dans une conversation privée
+ */
+export async function getConversationOtherUser(conversationId: string) {
+  try {
+    const userId = await getDbUserId();
+    if (!userId) {
+      return null;
+    }
+
+    // Récupérer la conversation et les membres
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                image: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!conversation) {
+      logger.warn({
+        context: "getConversationOtherUser",
+        action: "Conversation not found",
+        details: { conversationId },
+      });
+      return null;
+    }
+
+    // Si c'est une conversation de groupe, retourner le nom du groupe
+    if (conversation.isGroup) {
+      logger.debug({
+        context: "getConversationOtherUser",
+        action: "Group conversation",
+        details: { groupName: conversation.name },
+      });
+      return {
+        id: conversation.id,
+        name: conversation.name,
+        username: null,
+        image: conversation.image,
+        isGroup: true,
+      };
+    }
+
+    // Pour une conversation privée, trouver l'autre utilisateur
+    const otherUser = conversation.members
+      .map((member) => member.user)
+      .find((user) => user.id !== userId);
+
+    if (!otherUser) {
+      logger.warn({
+        context: "getConversationOtherUser",
+        action: "Other user not found in conversation",
+        details: { conversationId, userId },
+      });
+      return null;
+    }
+
+    logger.debug({
+      context: "getConversationOtherUser",
+      action: "Other user found",
+      details: { otherUserId: otherUser.id, username: otherUser.username },
+    });
+
+    return {
+      id: otherUser.id,
+      name: otherUser.name,
+      username: otherUser.username,
+      image: otherUser.image,
+      isGroup: false,
+    };
+  } catch (error) {
+    logger.error({
+      context: "getConversationOtherUser",
+      action: "Failed to fetch conversation other user",
+      error,
+      details: { conversationId },
+    });
+    return null;
   }
 }

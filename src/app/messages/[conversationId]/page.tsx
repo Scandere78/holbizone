@@ -45,7 +45,7 @@ async function ChatPage({ params }: ChatPageProps) {
               Messages
             </h2>
           </div>
-          <ConversationList conversations={conversations} />
+          <ConversationList conversations={conversations} currentUserId={currentUserId} />
         </div>
 
         {/* Zone de chat */}
