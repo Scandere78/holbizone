@@ -6,14 +6,17 @@ import { revalidatePath } from "next/cache";
 import { CreatePostSchema } from "@/lib/validations/post.validation";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { postRateLimit, checkRateLimit } from "@/lib/rate-limit";
+import { commentRateLimit  } from "@/lib/rate-limit";
+
 
 /**
- * Créer un nouveau post
+ * Créer un nouveau post avec rate limiting
  */
 export async function createPost(content: string, image?: string) {
   try {
-    // Validation Zod
-    const validatedData = CreatePostSchema.parse({ content, image });
+    // Étape 1: Récupérer l'utilisateur
+    
 
     const userId = await getDbUserId();
     if (!userId) {
@@ -24,6 +27,29 @@ export async function createPost(content: string, image?: string) {
       return { success: false, error: "Non autorisé" };
     }
 
+    // Étape 2: VÉRIFIER LE RATE LIMIT ⬅️ NOUVEAU
+    const rateLimitResult = await checkRateLimit(
+      postRateLimit,
+      userId, //identifier unique = ID utilisateur
+      "createPost"
+    )
+
+    if (!rateLimitResult.success) {
+      logger.warn({
+        context: "createPost",
+        action: "Rate limit exceeded",
+        details: { userId, resetAfter: rateLimitResult.resetAfter },
+      });
+      return {
+        success: false,
+        error: `Trop de posts trop rapidement. Réessayez dans ${Math.ceil(rateLimitResult.resetAfter / 1000)}s`,
+      };
+    }
+
+    // Étape 3: Validation Zod
+    const validatedData = CreatePostSchema.parse({ content, image });
+
+    // Étape 4: Créer le post en base de données
     const post = await prisma.post.create({
       data: {
         content: validatedData.content,
@@ -224,7 +250,7 @@ export async function toggleLike(postId: string) {
 }
 
 /**
- * Créer un commentaire sur un post
+ * Créer un commentaire avec rate limiting
  */
 export async function createComment(postId: string, content: string) {
   try {
@@ -240,6 +266,7 @@ export async function createComment(postId: string, content: string) {
 
     const validatedData = CreateCommentSchema.parse({ content, postId });
 
+// Étape 2: Récupérer l'utilisateur
     const userId = await getDbUserId();
     if (!userId) {
       logger.warn({
@@ -250,7 +277,26 @@ export async function createComment(postId: string, content: string) {
       return { success: false, error: "Non autorisé" };
     }
 
-    // Vérifier que le post existe
+     // Étape 3: VÉRIFIER LE RATE LIMIT ⬅️ NOUVEAU
+    const rateLimitResult = await checkRateLimit(
+      commentRateLimit,
+      userId,
+      "createComment"
+    );
+
+    if (!rateLimitResult.success) {
+      logger.warn({
+        context: "createComment",
+        action: "Rate limit exceeded",
+        details: { userId, postId },
+      });
+      return {
+        success: false,
+        error: `Trop de commentaires trop rapidement. Réessayez dans ${Math.ceil(rateLimitResult.resetAfter / 1000)}s`,
+      };
+    }
+
+    // Étape 4: Vérifier que le post existe
     const post = await prisma.post.findUnique({
       where: { id: validatedData.postId },
       select: { authorId: true },
@@ -265,7 +311,7 @@ export async function createComment(postId: string, content: string) {
       throw new Error("Post introuvable");
     }
 
-    // Créer le commentaire et la notification en transaction
+    //Étape 5:  Créer le commentaire et la notification en transaction
     const [comment] = await prisma.$transaction(async (tx) => {
       const newComment = await tx.comment.create({
         data: {

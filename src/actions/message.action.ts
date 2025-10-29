@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { SendMessageSchema, CreateConversationSchema } from "@/lib/validations/message.validation";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
-
+import { messageRateLimit, checkRateLimit } from "@/lib/rate-limit";
 export async function getOrCreatePrivateConversation(otherUserId: string) {
   try {
     const userId = await getDbUserId();
@@ -171,15 +171,15 @@ export async function createGroupConversation(data: {
     return { success: true, conversation };
   } catch (error) {
     console.error("Error creating group:", error);
-    
+
     // CORRIGÉ: issues au lieu de errors
     if (error instanceof z.ZodError) {
-      return { 
-        success: false, 
-        error: error.issues[0]?.message || "Données invalides" 
+      return {
+        success: false,
+        error: error.issues[0]?.message || "Données invalides"
       };
     }
-    
+
     return { success: false, error: "Failed to create group" };
   }
 }
@@ -292,11 +292,46 @@ export async function sendMessage(data: {
   try {
     const validatedData = SendMessageSchema.parse(data);
 
+    // Étape 1: Récupérer l'utilisateur
     const userId = await getDbUserId();
     if (!userId) {
+      logger.warn({
+        context: "sendMessage",
+        action: "Unauthorized access attempt",
+        details: { conversationId: validatedData.conversationId },
+      });
       return { success: false, error: "Unauthorized" };
     }
 
+    // Étape 2: VÉRIFIER LE RATE LIMIT ⬅️ NOUVEAU
+    const rateLimitResult = await checkRateLimit(
+      messageRateLimit,
+      userId,
+      "sendMessage"
+    );
+
+    if (!rateLimitResult.success) {
+      logger.warn({
+        context: "sendMessage",
+        action: "Rate limit exceeded",
+        details: { userId, conversationId: validatedData.conversationId },
+      });
+      return {
+        success: false,
+        error: `Trop de messages trop rapidement. Réessayez dans ${Math.ceil(rateLimitResult.resetAfter / 1000)}s`,
+      };
+    }
+
+    // Étape 3: Validation du contenu
+    const sanitizedContent = validatedData.content.trim();
+    if (!sanitizedContent || sanitizedContent.length > 5000) {
+      return {
+        success: false,
+        error: "Le message doit contenir entre 1 et 5000 caractères",
+      };
+    }
+
+    // Étape 4: Vérifier que la conversation existe et que l'utilisateur y a accès
     const isMember = await prisma.conversationMember.findUnique({
       where: {
         userId_conversationId: {
@@ -307,12 +342,21 @@ export async function sendMessage(data: {
     });
 
     if (!isMember) {
-      return { success: false, error: "Not a member of this conversation" };
+      logger.warn({
+        context: "sendMessage",
+        action: "User not a member of conversation",
+        details: { userId, conversationId: validatedData.conversationId },
+      });
+      return {
+        success: false,
+        error: "Vous n'êtes pas membre de cette conversation",
+      };
     }
 
+    // Étape 5: Créer le message
     const message = await prisma.message.create({
       data: {
-        content: validatedData.content,
+        content: sanitizedContent,
         image: validatedData.image,
         senderId: userId,
         conversationId: validatedData.conversationId,
@@ -329,9 +373,19 @@ export async function sendMessage(data: {
       },
     });
 
-    await prisma.conversation.update({
-      where: { id: validatedData.conversationId },
-      data: { updatedAt: new Date() },
+
+
+    // Étape 6: Mettre à jour lastReadAt pour l'expéditeur
+    await prisma.conversationMember.update({
+      where: {
+        userId_conversationId: {
+          userId,
+          conversationId: validatedData.conversationId,
+        },
+      },
+      data: {
+        lastReadAt: new Date(),
+      },
     });
 
     await pusherServer.trigger(
@@ -340,20 +394,34 @@ export async function sendMessage(data: {
       message
     );
 
+    logger.info({
+      context: "sendMessage",
+      action: "Message sent successfully",
+      details: {
+        messageId: message.id,
+        conversationId: validatedData.conversationId,
+        senderId: userId,
+      },
+    });
+
     revalidatePath(`/messages/${validatedData.conversationId}`);
     return { success: true, message };
   } catch (error) {
-    console.error("Error sending message:", error);
-    
-    // CORRIGÉ: issues au lieu de errors
+    logger.error({
+      context: "sendMessage",
+      action: "Failed to send message",
+      error,
+      details: { conversationId: data.conversationId },
+    });
+
     if (error instanceof z.ZodError) {
-      return { 
-        success: false, 
-        error: error.issues[0]?.message || "Données invalides" 
+      return {
+        success: false,
+        error: error.issues[0]?.message || "Données invalides"
       };
     }
-    
-    return { success: false, error: "Failed to send message" };
+
+    return { success: false, error: "Erreur lors de l'envoi du message" };
   }
 }
 
