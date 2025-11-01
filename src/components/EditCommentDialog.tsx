@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { editComment } from '@/actions/post.action';
 import { Loader2 } from 'lucide-react';
 
@@ -57,7 +57,7 @@ export default function EditCommentDialog({
     }
 
     if (content.trim() === comment.content.trim()) {
-      toast.info('Aucune modification');
+      toast.success('Aucune modification');
       return;
     }
 
@@ -67,7 +67,7 @@ export default function EditCommentDialog({
       const result = await editComment(comment.id, content.trim());
 
       if (!result.success) {
-        toast.error(result.error);
+        toast.error(result.error || "Erreur lors de l'édition");
         return;
       }
 

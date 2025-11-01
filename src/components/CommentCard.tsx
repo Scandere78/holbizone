@@ -21,7 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { deleteComment } from '@/actions/post.action';
 import EditCommentDialog from './EditCommentDialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -56,7 +56,7 @@ export default function CommentCard({
       const result = await deleteComment(comment.id);
 
       if (!result.success) {
-        toast.error(result.error);
+        toast.error(result.error || "Erreur lors de la suppression");
         return;
       }
 
