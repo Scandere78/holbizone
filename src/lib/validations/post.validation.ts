@@ -20,3 +20,12 @@ export const CreatePostSchema = z.object({
     .or(z.literal("")) // ⬅️ Accepter les strings vides
     .transform((val) => (val === "" ? undefined : val)), // ⬅️ Transformer "" en undefined
 });
+
+/**
+ * Schéma pour éditer un post
+ * ✅ Identique à CreatePostSchema (pour cohérence)
+ */
+export const EditPostSchema = CreatePostSchema;
+
+export type CreatePostInput = z.infer<typeof CreatePostSchema>;
+export type EditPostInput = z.infer<typeof EditPostSchema>;

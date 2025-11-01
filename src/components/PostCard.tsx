@@ -1,6 +1,6 @@
 "use client";
 
-import { createComment, deletePost, getPosts, toggleLike } from "@/actions/post.action";
+import { createComment, deletePost, getPosts, toggleLike, updatePost } from "@/actions/post.action";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useState } from "react";
 import toast from "react-hot-toast";
@@ -8,22 +8,54 @@ import { Card, CardContent } from "./ui/card";
 import Link from "next/link";
 import { Avatar, AvatarImage } from "./ui/avatar";
 import { formatDistanceToNow } from "date-fns";
-import { DeleteAlertDialog } from "./DeleteAlertDialog";
 import { Button } from "./ui/button";
-import { HeartIcon, LogInIcon, MessageCircleIcon, SendIcon } from "lucide-react";
+import { HeartIcon, LogInIcon, MessageCircleIcon, SendIcon, MoreVertical, Trash2, Edit2 } from "lucide-react";
 import { Textarea } from "./ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 
 type Posts = Awaited<ReturnType<typeof getPosts>>;
 type Post = Posts[number];
 
-function PostCard({ post, dbUserId }: { post: Post; dbUserId: string | null }) {
+// Type pour les posts sérialisés (dates en string)
+type SerializedPost = Omit<Post, 'createdAt' | 'updatedAt' | 'comments'> & {
+  createdAt: string;
+  updatedAt: string;
+  comments: (Omit<Post['comments'][0], 'createdAt' | 'updatedAt'> & {
+    createdAt: string;
+    updatedAt: string;
+  })[];
+};
+
+// Export le type pour utilisation dans d'autres fichiers
+export type { SerializedPost };
+
+function PostCard({ post, dbUserId }: { post: SerializedPost; dbUserId: string | null }) {
   const { user } = useUser();
   const [newComment, setNewComment] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [hasLiked, setHasLiked] = useState(post.likes.some((like) => like.userId === dbUserId));
-  const [optimisticLikes, setOptmisticLikes] = useState(post._count.likes);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedContent, setEditedContent] = useState(post.content ?? "");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [hasLiked, setHasLiked] = useState(dbUserId ? post.likes.some((like) => like.userId === dbUserId) : false);
+  const [optimisticLikes, setOptimisticLikes] = useState(post._count.likes);
   const [showComments, setShowComments] = useState(false);
 
   const handleLike = async () => {
@@ -31,11 +63,11 @@ function PostCard({ post, dbUserId }: { post: Post; dbUserId: string | null }) {
     try {
       setIsLiking(true);
       setHasLiked((prev) => !prev);
-      setOptmisticLikes((prev) => prev + (hasLiked ? -1 : 1));
+      setOptimisticLikes((prev) => prev + (hasLiked ? -1 : 1));
       await toggleLike(post.id);
     } catch (error) {
-      setOptmisticLikes(post._count.likes);
-      setHasLiked(post.likes.some((like) => like.userId === dbUserId));
+      setOptimisticLikes(post._count.likes);
+      setHasLiked(dbUserId ? post.likes.some((like) => like.userId === dbUserId) : false);
     } finally {
       setIsLiking(false);
     }
@@ -72,6 +104,7 @@ function PostCard({ post, dbUserId }: { post: Post; dbUserId: string | null }) {
   };
 
   return (
+    <>
     <Card className="overflow-hidden border-red-100 dark:border-red-950/50 shadow-md hover:shadow-xl transition-all duration-300 group">
       <CardContent className="p-4 sm:p-6">
         <div className="space-y-4">
@@ -102,10 +135,88 @@ function PostCard({ post, dbUserId }: { post: Post; dbUserId: string | null }) {
                 </div>
                 {/* Check if current user is the post author */}
                 {dbUserId === post.author.id && (
-                  <DeleteAlertDialog isDeleting={isDeleting} onDelete={handleDeletePost} />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-red-50 dark:hover:bg-red-950/20 -mr-2"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setIsEditMode(true)}
+                        className="text-blue-600 dark:text-blue-400 cursor-pointer"
+                      >
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        Edit Post
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="text-red-600 dark:text-red-400 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Post
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
-              <p className="mt-3 text-sm sm:text-base text-foreground break-words leading-relaxed">{post.content}</p>
+              {isEditMode ? (
+                <div className="mt-3 space-y-3">
+                  <Textarea
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
+                    className="min-h-[80px] resize-none bg-muted/30 border-blue-100 dark:border-blue-900 focus:border-blue-500 dark:focus:border-blue-500 transition-colors"
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditMode(false);
+                        setEditedContent(post.content ?? "");
+                      }}
+                      disabled={isSavingEdit}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        if (!editedContent.trim()) {
+                          toast.error("Post content cannot be empty");
+                          return;
+                        }
+                        setIsSavingEdit(true);
+                        try {
+                          const result = await updatePost(post.id, editedContent.trim());
+                          if (result.success) {
+                            toast.success("Post updated successfully");
+                            setIsEditMode(false);
+                            // Recharger la page pour voir les changements
+                            window.location.reload();
+                          } else {
+                            toast.error(result.error || "Failed to update post");
+                          }
+                        } catch (error) {
+                          toast.error("Failed to update post");
+                        } finally {
+                          setIsSavingEdit(false);
+                        }
+                      }}
+                      disabled={isSavingEdit}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isSavingEdit ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm sm:text-base text-foreground break-words leading-relaxed">{post.content}</p>
+              )}
             </div>
           </div>
 
@@ -231,6 +342,29 @@ function PostCard({ post, dbUserId }: { post: Post; dbUserId: string | null }) {
         </div>
       </CardContent>
     </Card>
+
+    {/* Delete confirmation dialog */}
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Post</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete your post and all its comments.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeletePost}
+            disabled={isDeleting}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 export default PostCard;

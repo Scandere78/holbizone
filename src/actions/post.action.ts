@@ -557,3 +557,281 @@ export async function getPostById(postId: string) {
     return null;
   }
 }
+
+
+/**
+ * Éditer un commentaire existant
+ * 
+ * ✅ ÉTAPES:
+ * 1. Vérifier authentification
+ * 2. Vérifier que le commentaire existe
+ * 3. Vérifier l'ownership
+ * 4. Valider avec Zod
+ * 5. Mettre à jour
+ */
+
+export async function editComment(
+  commentId: string,
+  content: string
+) {
+  try {
+    // ✅ ÉTAPE 1: Récupérer l'utilisateur
+    const userId = await getDbUserId();
+    if (!userId) {
+      logger.warn({
+        context: "editComment",
+        action: "Unauthorized attempt",
+        details: { commentId },
+      });
+      return { success: false, error: "Non autorisé" };
+    }
+
+// ✅ ÉTAPE 2: Vérifier que le commentaire existe
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { authorId: true, postId: true },
+    });
+
+    if (!comment) {
+      logger.warn({
+        context: "editComment",
+        action: "Comment not found",
+        details: { commentId },
+      });
+      return { success: false, error: "Commentaire introuvable" };
+    }
+
+    // ✅ ÉTAPE 3: Vérifier l'ownership
+    if (comment.authorId !== userId) {
+      logger.warn({
+        context: "editComment",
+        action: "User is not comment author",
+        details: { commentId, userId, authorId: comment.authorId },
+      });
+      return {
+        success: false,
+        error: "Vous ne pouvez éditer que vos propres commentaires",
+      };
+    }
+
+     // ✅ ÉTAPE 4: Valider avec Zod
+    const validatedContent = z
+      .string()
+      .min(1, "Le commentaire ne peut pas être vide")
+      .max(500, "Le commentaire ne peut pas dépasser 500 caractères")
+      .trim()
+      .parse(content);
+
+       // ✅ ÉTAPE 5: Mettre à jour
+    const updatedComment = await prisma.comment.update({
+      where: { id: commentId },
+      data: {
+        content: validatedContent,
+        updatedAt: new Date(),
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            image: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    logger.info({
+      context: "editComment",
+      action: "Comment edited successfully",
+      details: { commentId, postId: comment.postId },
+    });
+
+    revalidatePath(`/posts/${comment.postId}`);
+    return { success: true, comment: updatedComment };
+  } catch (error) {
+    logger.error({
+      context: "editComment",
+      action: "Failed to edit comment",
+      error,
+      details: { commentId },
+    });
+
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: error.issues[0]?.message || "Données invalides",
+      };
+    }
+
+    return { success: false, error: "Erreur lors de l'édition du commentaire" };
+  }
+}
+
+/**
+ * Supprimer un commentaire
+ * 
+ * ✅ ÉTAPES:
+ * 1. Vérifier authentification
+ * 2. Vérifier que le commentaire existe
+ * 3. Vérifier l'ownership
+ * 4. Supprimer
+ */
+export async function deleteComment(commentId: string) {
+  try {
+    // ✅ ÉTAPE 1: Récupérer l'utilisateur
+    const userId = await getDbUserId();
+    if (!userId) {
+      logger.warn({
+        context: "deleteComment",
+        action: "Unauthorized attempt",
+        details: { commentId },
+      });
+      return { success: false, error: "Non autorisé" };
+    }
+
+      // ✅ ÉTAPE 2: Vérifier que le commentaire existe
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { authorId: true, postId: true },
+    });
+
+    if (!comment) {
+      logger.warn({
+        context: "deleteComment",
+        action: "Comment not found",
+        details: { commentId },
+      });
+      return { success: false, error: "Commentaire introuvable" };
+    }
+
+    // ✅ ÉTAPE 3: Vérifier l'ownership
+    if (comment.authorId !== userId) {
+      logger.warn({
+        context: "deleteComment",
+        action: "User is not comment author",
+        details: { commentId, userId, authorId: comment.authorId },
+      });
+      return {
+        success: false,
+        error: "Vous ne pouvez supprimer que vos propres commentaires",
+      };
+    }
+
+    // ✅ ÉTAPE 4: Supprimer
+    await prisma.comment.delete({
+      where: { id: commentId },
+    });
+
+    logger.info({
+      context: "deleteComment",
+      action: "Comment deleted successfully",
+      details: { commentId, postId: comment.postId },
+    });
+
+    revalidatePath(`/posts/${comment.postId}`);
+    return { success: true };
+  } catch (error) {
+    logger.error({
+      context: "deleteComment",
+      action: "Failed to delete comment",
+      error,
+      details: { commentId },
+    });
+
+     return { success: false, error: "Erreur lors de la suppression du commentaire" };
+  }
+}
+
+/**
+ * Mettre à jour un post
+ */
+export async function updatePost(postId: string, content: string) {
+  try {
+    // ✅ ÉTAPE 1: Récupérer l'utilisateur
+    const userId = await getDbUserId();
+    if (!userId) {
+      logger.warn({
+        context: "updatePost",
+        action: "Unauthorized attempt - no user ID",
+      });
+      return { success: false, error: "Non autorisé" };
+    }
+
+    // ✅ ÉTAPE 2: Validation
+    if (!content.trim()) {
+      return { success: false, error: "Le contenu du post ne peut pas être vide" };
+    }
+
+    if (content.length > 5000) {
+      return { success: false, error: "Le contenu ne peut pas dépasser 5000 caractères" };
+    }
+
+    // ✅ ÉTAPE 3: Récupérer le post
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+    });
+
+    if (!post) {
+      logger.warn({
+        context: "updatePost",
+        action: "Post not found",
+        details: { postId },
+      });
+      return { success: false, error: "Post introuvable" };
+    }
+
+    // ✅ ÉTAPE 4: Vérifier l'ownership
+    if (post.authorId !== userId) {
+      logger.warn({
+        context: "updatePost",
+        action: "User is not post author",
+        details: { postId, userId, authorId: post.authorId },
+      });
+      return {
+        success: false,
+        error: "Vous ne pouvez modifier que vos propres posts",
+      };
+    }
+
+    // ✅ ÉTAPE 5: Mettre à jour
+    const updatedPost = await prisma.post.update({
+      where: { id: postId },
+      data: {
+        content: content.trim(),
+        updatedAt: new Date(),
+      },
+      include: {
+        author: true,
+        likes: true,
+        comments: true,
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
+    });
+
+    logger.info({
+      context: "updatePost",
+      action: "Post updated successfully",
+      details: { postId, userId },
+    });
+
+    revalidatePath("/");
+    revalidatePath(`/posts/${postId}`);
+    
+    return { success: true, data: updatedPost };
+  } catch (error) {
+    logger.error({
+      context: "updatePost",
+      action: "Failed to update post",
+      error,
+      details: { postId },
+    });
+
+    return { success: false, error: "Erreur lors de la mise à jour du post" };
+  }
+}

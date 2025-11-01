@@ -2,7 +2,7 @@
 
 import { getProfileByUsername, getUserPosts, updateProfile } from "@/actions/profile.action";
 import { toggleFollow } from "@/actions/user.action";
-import PostCard from "@/components/PostCard";
+import PostCard, { type SerializedPost } from "@/components/PostCard";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,7 +28,7 @@ import {
   LinkIcon,
   MapPinIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import toast from "react-hot-toast";
 
 type User = Awaited<ReturnType<typeof getProfileByUsername>>;
@@ -58,6 +58,34 @@ function ProfilePageClient({
     location: user.location || "",
     website: user.website || "",
   });
+
+  // ✅ Sérialiser les posts
+  const serializedPosts = useMemo(() => {
+    return posts.map((post) => ({
+      ...post,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      comments: post.comments.map((comment) => ({
+        ...comment,
+        createdAt: comment.createdAt.toISOString(),
+        updatedAt: comment.updatedAt.toISOString(),
+      })),
+    })) as SerializedPost[];
+  }, [posts]);
+
+  // ✅ Sérialiser les likes posts
+  const serializedLikedPosts = useMemo(() => {
+    return likedPosts.map((post) => ({
+      ...post,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      comments: post.comments.map((comment) => ({
+        ...comment,
+        createdAt: comment.createdAt.toISOString(),
+        updatedAt: comment.updatedAt.toISOString(),
+      })),
+    })) as SerializedPost[];
+  }, [likedPosts]);
 
   const handleEditSubmit = async () => {
     const formData = new FormData();
@@ -202,8 +230,8 @@ function ProfilePageClient({
 
           <TabsContent value="posts" className="mt-6">
             <div className="space-y-6">
-              {posts.length > 0 ? (
-                posts.map((post) => <PostCard key={post.id} post={post} dbUserId={user.id} />)
+              {serializedPosts.length > 0 ? (
+                serializedPosts.map((post) => <PostCard key={post.id} post={post} dbUserId={user.id} />)
               ) : (
                 <div className="text-center py-8 text-muted-foreground">No posts yet</div>
               )}
@@ -212,8 +240,8 @@ function ProfilePageClient({
 
           <TabsContent value="likes" className="mt-6">
             <div className="space-y-6">
-              {likedPosts.length > 0 ? (
-                likedPosts.map((post) => <PostCard key={post.id} post={post} dbUserId={user.id} />)
+              {serializedLikedPosts.length > 0 ? (
+                serializedLikedPosts.map((post) => <PostCard key={post.id} post={post} dbUserId={user.id} />)
               ) : (
                 <div className="text-center py-8 text-muted-foreground">No liked posts to show</div>
               )}

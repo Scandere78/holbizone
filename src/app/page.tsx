@@ -10,6 +10,18 @@ export default async function Home() {
   const posts = await getPosts(); // Assuming you have a function to fetch posts
   const dbUserId = await getDbUserId();
 
+  // ✅ Convertir les dates en string pour la sérialisation
+  const serializedPosts = posts.map(post => ({
+    ...post,
+    createdAt: post.createdAt.toISOString(),
+    updatedAt: post.updatedAt.toISOString(),
+    comments: post.comments.map(comment => ({
+      ...comment,
+      createdAt: comment.createdAt.toISOString(),
+      updatedAt: comment.updatedAt.toISOString(),
+    })),
+  }));
+
   console.log({posts});
   
   return (
@@ -17,7 +29,7 @@ export default async function Home() {
       {user ? <CreatePost /> : null}
 
       <div className="space-y-6">
-        {posts.map((post) => (
+        {serializedPosts.map((post) => (
           <PostCard key={post.id} post={post} dbUserId={dbUserId} />
         ))}
       </div>
