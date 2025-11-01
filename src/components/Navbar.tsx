@@ -28,7 +28,7 @@ function Navbar({ user, unreadMessages, unreadNotifications }: NavbarProps) {
                 <div className="absolute inset-0 bg-red-500/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-red-600 to-orange-500 dark:from-red-400 dark:to-orange-400 bg-clip-text text-transparent font-mono tracking-wider">
-                HolbiHub
+                HolbiZone
               </span>
             </Link>
           </div>
