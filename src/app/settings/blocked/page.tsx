@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getBlockedUsers, unblockUser } from '@/actions/block.actions';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { OptimizedAvatar } from '@/components/ui/optimized-image';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -130,14 +130,13 @@ export default function BlockedUsersPage() {
                 href={`/profile/${block.blocked.username}`}
                 className="flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity"
               >
-                <Avatar className="h-12 w-12 ring-2 ring-red-500/20">
-                  <AvatarImage src={block.blocked.image || ''} />
-                  <AvatarFallback className="bg-gradient-to-br from-red-500 to-rose-500 text-white font-bold">
-                    {block.blocked.name?.[0]?.toUpperCase() ||
-                      block.blocked.username?.[0]?.toUpperCase() ||
-                      '?'}
-                  </AvatarFallback>
-                </Avatar>
+                <OptimizedAvatar
+                  src={block.blocked.image || null}
+                  alt={block.blocked.name || block.blocked.username || 'User'}
+                  fallbackText={block.blocked.name || block.blocked.username || 'User'}
+                  size={48}
+                  className="ring-2 ring-red-500/20"
+                />
 
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-sm truncate">

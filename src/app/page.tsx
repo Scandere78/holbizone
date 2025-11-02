@@ -1,12 +1,11 @@
 import CreatePost from "@/components/CreatePost";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import Image from "next/image";
 import { getPosts } from "@/actions/post.action";
 import PostCard from "@/components/PostCard";
-import { getDbUserId } from "@/actions/user.action";
 
 export default async function Home() {
-  const user = await currentUser();
+  const { userId } = await auth();
   const posts = await getPosts(); // Assuming you have a function to fetch posts
 
   // ✅ Convertir les dates en string pour la sérialisation
@@ -25,7 +24,7 @@ export default async function Home() {
   
   return (
     <div className="space-y-6">
-      {user ? <CreatePost /> : null}
+      {userId ? <CreatePost /> : null}
 
       <div className="space-y-6">
         {serializedPosts.map((post) => (

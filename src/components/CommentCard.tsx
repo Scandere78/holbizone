@@ -6,25 +6,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator, // ⬅️ AJOUTER CETTE IMPORT
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import toast from 'react-hot-toast';
 import { deleteComment } from '@/actions/post.action';
 import EditCommentDialog from './EditCommentDialog';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { OptimizedAvatar } from '@/components/ui/optimized-image';
 
 /**
  * Carte de commentaire avec options d'édition/suppression
@@ -76,13 +67,13 @@ export default function CommentCard({
       {/* Carte du commentaire */}
       <div className="flex gap-3 p-3 border border-red-100 dark:border-red-950/50 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">
         {/* Avatar */}
-        <Avatar className="w-8 h-8 shrink-0">
-          <AvatarImage
-            src={comment.author.image || '/avatar.png'}
-            alt={comment.author.username}
-          />
-          <AvatarFallback>{comment.author.username?.charAt(0)}</AvatarFallback>
-        </Avatar>
+        <OptimizedAvatar
+          src={comment.author.image || null}
+          alt={comment.author.username || 'User'}
+          fallbackText={comment.author.username || 'User'}
+          size={32}
+          className="shrink-0"
+        />
 
         {/* Contenu */}
         <div className="flex-1 min-w-0">
@@ -144,27 +135,16 @@ export default function CommentCard({
       />
 
       {/* Dialog de confirmation de suppression */}
-      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>🗑️ Supprimer le commentaire ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action est irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteComment}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isDeleting ? 'Suppression...' : 'Supprimer'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        title="Supprimer le commentaire ?"
+        description="Cette action est irréversible."
+        confirmText="Supprimer"
+        variant="destructive"
+        onConfirm={handleDeleteComment}
+        isLoading={isDeleting}
+      />
     </>
   );
 }

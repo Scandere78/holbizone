@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { OptimizedAvatar } from '@/components/ui/optimized-image';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -164,12 +164,13 @@ export default function UserSearchList({ initialUsers }: UserSearchListProps) {
                   {/* Header avec avatar */}
                   <div className="flex items-start justify-between mb-4">
                     <Link href={`/profile/${user.username}`} className="group/avatar">
-                      <Avatar className="h-14 w-14 ring-2 ring-red-500/20 group-hover/avatar:ring-red-500/50 transition-all cursor-pointer">
-                        <AvatarImage src={user.image || ''} />
-                        <AvatarFallback className="bg-gradient-to-br from-red-500 to-orange-500 text-white font-bold">
-                          {user.name?.[0]?.toUpperCase() || user.username?.[0]?.toUpperCase() || '?'}
-                        </AvatarFallback>
-                      </Avatar>
+                      <OptimizedAvatar
+                        src={user.image || null}
+                        alt={user.name || user.username || 'User'}
+                        fallbackText={user.name || user.username || 'User'}
+                        size={56}
+                        className="ring-2 ring-red-500/20 group-hover/avatar:ring-red-500/50 transition-all cursor-pointer"
+                      />
                     </Link>
 
                     {/* Follow Button */}

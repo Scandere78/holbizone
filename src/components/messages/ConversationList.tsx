@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { OptimizedAvatar } from '@/components/ui/optimized-image';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { logger } from '@/lib/logger';
@@ -102,15 +102,13 @@ export default function ConversationList({
                 >
                   {/* Avatar avec badge */}
                   <div className="relative shrink-0">
-                    <Avatar className="w-12 h-12 ring-2 ring-red-200 dark:ring-red-800 group-hover:ring-red-400 dark:group-hover:ring-red-600 transition-all">
-                      <AvatarImage
-                        src={displayImage || '/avatar.png'}
-                        alt={displayName || 'Conversation'}
-                      />
-                      <AvatarFallback className="bg-gradient-to-br from-red-500 to-orange-500 text-white text-lg font-bold">
-                        {displayName?.charAt(0)?.toUpperCase() || 'C'}
-                      </AvatarFallback>
-                    </Avatar>
+                    <OptimizedAvatar
+                      src={displayImage || null}
+                      alt={displayName || 'Conversation'}
+                      fallbackText={displayName || 'Conversation'}
+                      size={48}
+                      className="ring-2 ring-red-200 dark:ring-red-800 group-hover:ring-red-400 dark:group-hover:ring-red-600 transition-all"
+                    />
 
                     {/* Badge des messages non lus */}
                     <div className="absolute inset-0">

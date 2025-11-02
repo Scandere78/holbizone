@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2Icon, Trash2Icon } from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -11,50 +11,55 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 interface DeleteAlertDialogProps {
   isDeleting: boolean;
-  onDelete: () => Promise<void>;
+  isOpen: boolean;
+  onDeleteAction: () => void;
+  onCloseAction: () => void;
   title?: string;
   description?: string;
 }
 
 export function DeleteAlertDialog({
   isDeleting,
-  onDelete,
+  isOpen,
+  onDeleteAction,
+  onCloseAction,
   title = "Delete Post",
   description = "This action cannot be undone.",
 }: DeleteAlertDialogProps) {
+  const handleDelete = async () => {
+    try {
+      await onDeleteAction();
+      // Fermer le dialog après succès
+      onCloseAction();
+    } catch (error) {
+      console.error('Delete error:', error);
+    }
+  };
+
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-red-500 -mr-2"
-        >
-          {isDeleting ? (
-            <Loader2Icon className="size-4 animate-spin" />
-          ) : (
-            <Trash2Icon className="size-4" />
-          )}
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog open={isOpen} onOpenChange={(open) => {
+      if (!open) onCloseAction();
+    }}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCloseAction}>Annuler</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onDelete}
+            onClick={handleDelete}
             className="bg-red-500 hover:bg-red-600"
             disabled={isDeleting}
           >
-            {isDeleting ? "Deleting..." : "Delete"}
+            {isDeleting ? (
+              <Loader2Icon className="size-4 animate-spin mr-2" />
+            ) : null}
+            Supprimer
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

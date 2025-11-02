@@ -28,6 +28,7 @@ import toast from 'react-hot-toast';
 import {
   toggleLike,
   deletePost,
+  updatePost,
 } from '@/actions/post.action';
 import {
   toggleBookmark,
@@ -35,6 +36,8 @@ import {
 } from '@/actions/bookmark.action';
 import { blockUser, isUserBlocked } from '@/actions/block.actions';
 import { useUser } from '@clerk/nextjs';
+import EditPostDialog from './EditPostDialog';
+import { DeleteAlertDialog } from './DeleteAlertDialog';
 
 interface PostCardProps {
   post: any;
@@ -57,8 +60,9 @@ export default function PostCard({
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLoadingBookmark, setIsLoadingBookmark] = useState(false);
 
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isLoadingDelete, setIsLoadingDelete] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [isBlocked, setIsBlocked] = useState(false);
   const [isBlockLoading, setIsBlockLoading] = useState(false);
@@ -159,12 +163,11 @@ export default function PostCard({
   // ✅ Handler Delete
   const handleDelete = async () => {
     try {
-      setIsLoadingDelete(true);
+      setIsDeleting(true);
       const result = await deletePost(post.id);
 
       if (result.success) {
         toast.success('✅ Post supprimé');
-        setIsDeleteOpen(false);
         onPostDeleted?.();
       } else {
         toast.error(result.error || 'Erreur');
@@ -172,7 +175,7 @@ export default function PostCard({
     } catch (error) {
       toast.error('Erreur lors de la suppression');
     } finally {
-      setIsLoadingDelete(false);
+      setIsDeleting(false);
     }
   };
 
@@ -253,11 +256,22 @@ export default function PostCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              {/* Option Edit (si auteur) */}
+              {isAuthor && (
+                <DropdownMenuItem
+                  onClick={() => setIsEditOpen(true)}
+                  className="cursor-pointer flex items-center gap-2"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Éditer
+                </DropdownMenuItem>
+              )}
+
               {/* Option Delete (si auteur) */}
               {isAuthor && (
                 <DropdownMenuItem
-                  onClick={() => setIsDeleteOpen(true)}
-                  className="text-red-600 cursor-pointer flex items-center gap-2"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="cursor-pointer flex items-center gap-2 text-red-600"
                 >
                   <Trash2 className="w-4 h-4" />
                   Supprimer
@@ -276,7 +290,6 @@ export default function PostCard({
               {/* Option Bloquer (si pas auteur et pas déjà bloqué) */}
               {!isAuthor && clerkUser && (
                 <>
-                  <DropdownMenuSeparator />
                   {!isBlocked ? (
                     <DropdownMenuItem
                       onClick={handleBlock}
@@ -380,31 +393,24 @@ export default function PostCard({
       </Card>
 
       {/* Delete Confirm Dialog - Simple implementation */}
-      {isDeleteOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-lg">
-          <Card className="w-96 p-6">
-            <h2 className="text-lg font-bold mb-2">Supprimer le post ?</h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              Cette action est irréversible. Le post sera définitivement supprimé.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setIsDeleteOpen(false)}
-              >
-                Annuler
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isLoadingDelete}
-              >
-                {isLoadingDelete ? 'Suppression...' : 'Supprimer'}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      <EditPostDialog
+        isOpen={isEditOpen}
+        onCloseAction={() => setIsEditOpen(false)}
+        post={post}
+        onSuccess={() => {
+          setIsEditOpen(false);
+          onPostUpdated?.();
+        }}
+      />
+
+      <DeleteAlertDialog
+        isDeleting={isDeleting}
+        isOpen={isDeleteDialogOpen}
+        onDeleteAction={handleDelete}
+        onCloseAction={() => setIsDeleteDialogOpen(false)}
+        title="Supprimer le post ?"
+        description="Cette action est irréversible. Le post sera définitivement supprimé."
+      />
     </>
   );
 }

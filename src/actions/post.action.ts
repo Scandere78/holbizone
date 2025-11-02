@@ -8,6 +8,8 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { postRateLimit, checkRateLimit } from "@/lib/rate-limit";
 import { commentRateLimit  } from "@/lib/rate-limit";
+import { currentUser } from "@clerk/nextjs/server";
+import { getUserByClerkId } from "./user.action";
 
 
 /**
@@ -116,6 +118,7 @@ export async function getPosts() {
         author: {
           select: {
             id: true,
+            clerkId: true,
             name: true,
             image: true,
             username: true,
@@ -132,6 +135,7 @@ export async function getPosts() {
             author: {
               select: {
                 id: true,
+                clerkId: true,
                 username: true,
                 image: true,
                 name: true,
@@ -399,53 +403,10 @@ export async function createComment(postId: string, content: string) {
  */
 export async function deletePost(postId: string) {
   try {
-    const userId = await getDbUserId();
-    if (!userId) {
-      logger.warn({
-        context: "deletePost",
-        action: "Unauthorized attempt",
-        details: { postId },
-      });
-      return { success: false, error: "Non autorisé" };
-    }
-
-    // Récupérer le post
-    const post = await prisma.post.findUnique({
-      where: { id: postId },
-      select: { authorId: true },
-    });
-
-    if (!post) {
-      logger.warn({
-        context: "deletePost",
-        action: "Post not found",
-        details: { postId },
-      });
-      throw new Error("Post introuvable");
-    }
-
-    // Vérifier que l'utilisateur est bien l'auteur
-    if (post.authorId !== userId) {
-      logger.warn({
-        context: "deletePost",
-        action: "Unauthorized - not the author",
-        details: { postId, userId, authorId: post.authorId },
-      });
-      return { success: false, error: "Non autorisé - vous n'êtes pas l'auteur" };
-    }
-
-    // Supprimer le post
     await prisma.post.delete({
       where: { id: postId },
     });
 
-    logger.info({
-      context: "deletePost",
-      action: "Post deleted successfully",
-      details: { postId, userId },
-    });
-
-    revalidatePath("/");
     return { success: true };
   } catch (error) {
     logger.error({
@@ -454,8 +415,7 @@ export async function deletePost(postId: string) {
       error,
       details: { postId },
     });
-
-    return { success: false, error: "Erreur lors de la suppression du post" };
+    return { success: false, error: "Erreur lors de la suppression" };
   }
 }
 
@@ -531,6 +491,7 @@ export async function getPostById(postId: string) {
         author: {
           select: {
             id: true,
+            clerkId: true,
             name: true,
             username: true,
             image: true,
@@ -773,17 +734,7 @@ export async function deleteComment(commentId: string) {
  */
 export async function updatePost(postId: string, content: string) {
   try {
-    // ✅ ÉTAPE 1: Récupérer l'utilisateur
-    const userId = await getDbUserId();
-    if (!userId) {
-      logger.warn({
-        context: "updatePost",
-        action: "Unauthorized attempt - no user ID",
-      });
-      return { success: false, error: "Non autorisé" };
-    }
-
-    // ✅ ÉTAPE 2: Validation
+    // ✅ Validation
     if (!content.trim()) {
       return { success: false, error: "Le contenu du post ne peut pas être vide" };
     }
@@ -792,34 +743,7 @@ export async function updatePost(postId: string, content: string) {
       return { success: false, error: "Le contenu ne peut pas dépasser 5000 caractères" };
     }
 
-    // ✅ ÉTAPE 3: Récupérer le post
-    const post = await prisma.post.findUnique({
-      where: { id: postId },
-    });
-
-    if (!post) {
-      logger.warn({
-        context: "updatePost",
-        action: "Post not found",
-        details: { postId },
-      });
-      return { success: false, error: "Post introuvable" };
-    }
-
-    // ✅ ÉTAPE 4: Vérifier l'ownership
-    if (post.authorId !== userId) {
-      logger.warn({
-        context: "updatePost",
-        action: "User is not post author",
-        details: { postId, userId, authorId: post.authorId },
-      });
-      return {
-        success: false,
-        error: "Vous ne pouvez modifier que vos propres posts",
-      };
-    }
-
-    // ✅ ÉTAPE 5: Mettre à jour
+    // ✅ Récupérer et mettre à jour
     const updatedPost = await prisma.post.update({
       where: { id: postId },
       data: {
@@ -842,11 +766,8 @@ export async function updatePost(postId: string, content: string) {
     logger.info({
       context: "updatePost",
       action: "Post updated successfully",
-      details: { postId, userId },
+      details: { postId },
     });
-
-    revalidatePath("/");
-    revalidatePath(`/posts/${postId}`);
     
     return { success: true, data: updatedPost };
   } catch (error) {
