@@ -39,6 +39,19 @@ export async function getProfileByUsername(username: string) {
 
 export async function getUserPosts(userId: string) {
   try {
+    // Récupérer l'ID de l'utilisateur actuel pour filtrer les commentaires des bloqués
+    const currentUserId = await getDbUserId();
+
+    // Récupérer les IDs des utilisateurs bloqués
+    let blockedUserIds: string[] = [];
+    if (currentUserId) {
+      const blocks = await prisma.block.findMany({
+        where: { blockerId: currentUserId },
+        select: { blockedId: true },
+      });
+      blockedUserIds = blocks.map(block => block.blockedId);
+    }
+
     const posts = await prisma.post.findMany({
       where: { authorId: userId },
       orderBy: { createdAt: "desc" },
@@ -52,6 +65,12 @@ export async function getUserPosts(userId: string) {
           },
         },
         comments: {
+          // Filtrer les commentaires des utilisateurs bloqués
+          where: {
+            authorId: {
+              notIn: blockedUserIds.length > 0 ? blockedUserIds : undefined,
+            },
+          },
           include: {
             author: {
               select: {
@@ -89,6 +108,19 @@ export async function getUserPosts(userId: string) {
 
 export async function getUserLikedPosts(userId: string) {
   try {
+    // Récupérer l'ID de l'utilisateur actuel pour filtrer les commentaires des bloqués
+    const currentUserId = await getDbUserId();
+
+    // Récupérer les IDs des utilisateurs bloqués
+    let blockedUserIds: string[] = [];
+    if (currentUserId) {
+      const blocks = await prisma.block.findMany({
+        where: { blockerId: currentUserId },
+        select: { blockedId: true },
+      });
+      blockedUserIds = blocks.map(block => block.blockedId);
+    }
+
     const likedPosts = await prisma.like.findMany({
       where: { userId },
       include: {
@@ -103,6 +135,12 @@ export async function getUserLikedPosts(userId: string) {
               },
             },
             comments: {
+              // Filtrer les commentaires des utilisateurs bloqués
+              where: {
+                authorId: {
+                  notIn: blockedUserIds.length > 0 ? blockedUserIds : undefined,
+                },
+              },
               include: {
                 author: {
                   select: {

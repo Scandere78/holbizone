@@ -2,7 +2,8 @@
 
 import { getProfileByUsername, getUserPosts, updateProfile } from "@/actions/profile.action";
 import { toggleFollow } from "@/actions/user.action";
-import PostCard, { type SerializedPost } from "@/components/PostCard";
+import { blockUser, isUserBlocked } from "@/actions/block.actions";
+import PostCard from "@/components/PostCard";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -27,8 +34,10 @@ import {
   HeartIcon,
   LinkIcon,
   MapPinIcon,
+  MoreVertical,
+  ShieldOff,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
 
 type User = Awaited<ReturnType<typeof getProfileByUsername>>;
@@ -51,6 +60,8 @@ function ProfilePageClient({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [isUpdatingFollow, setIsUpdatingFollow] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [isBlockLoading, setIsBlockLoading] = useState(false);
 
   const [editForm, setEditForm] = useState({
     name: user.name || "",
@@ -58,6 +69,19 @@ function ProfilePageClient({
     location: user.location || "",
     website: user.website || "",
   });
+
+  /**
+   * Vérifier si l'utilisateur est bloqué au chargement du composant
+   */
+  useEffect(() => {
+    const checkIfBlocked = async () => {
+      if (currentUser && user.id) {
+        const blocked = await isUserBlocked(user.id);
+        setIsBlocked(blocked);
+      }
+    };
+    checkIfBlocked();
+  }, [currentUser, user.id]);
 
   // ✅ Sérialiser les posts
   const serializedPosts = useMemo(() => {
@@ -70,7 +94,7 @@ function ProfilePageClient({
         createdAt: comment.createdAt.toISOString(),
         updatedAt: comment.updatedAt.toISOString(),
       })),
-    })) as SerializedPost[];
+    }));
   }, [posts]);
 
   // ✅ Sérialiser les likes posts
@@ -84,7 +108,7 @@ function ProfilePageClient({
         createdAt: comment.createdAt.toISOString(),
         updatedAt: comment.updatedAt.toISOString(),
       })),
-    })) as SerializedPost[];
+    }));
   }, [likedPosts]);
 
   const handleEditSubmit = async () => {
@@ -111,6 +135,29 @@ function ProfilePageClient({
       toast.error("Failed to update follow status");
     } finally {
       setIsUpdatingFollow(false);
+    }
+  };
+
+  /**
+   * Gérer le blocage d'un utilisateur
+   */
+  const handleBlock = async () => {
+    if (!currentUser) return;
+
+    try {
+      setIsBlockLoading(true);
+      const result = await blockUser(user.id);
+
+      if (result.success) {
+        setIsBlocked(true);
+        toast.success("Utilisateur bloqué");
+      } else {
+        toast.error(result.error || "Erreur lors du blocage");
+      }
+    } catch (error) {
+      toast.error("Erreur lors du blocage");
+    } finally {
+      setIsBlockLoading(false);
     }
   };
 
@@ -165,14 +212,47 @@ function ProfilePageClient({
                     Edit Profile
                   </Button>
                 ) : (
-                  <Button
-                    className="w-full mt-4"
-                    onClick={handleFollow}
-                    disabled={isUpdatingFollow}
-                    variant={isFollowing ? "outline" : "default"}
-                  >
-                    {isFollowing ? "Unfollow" : "Follow"}
-                  </Button>
+                  <div className="w-full mt-4 flex gap-2">
+                    <Button
+                      className="flex-1"
+                      onClick={handleFollow}
+                      disabled={isUpdatingFollow || isBlocked}
+                      variant={isFollowing ? "outline" : "default"}
+                    >
+                      {isFollowing ? "Unfollow" : "Follow"}
+                    </Button>
+
+                    {/* Menu avec option de blocage */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-10 w-10"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        {!isBlocked && (
+                          <DropdownMenuItem
+                            onClick={handleBlock}
+                            disabled={isBlockLoading}
+                            className="text-red-600 cursor-pointer flex items-center gap-2"
+                          >
+                            <ShieldOff className="w-4 h-4" />
+                            {isBlockLoading ? "Blocage..." : "Bloquer l'utilisateur"}
+                          </DropdownMenuItem>
+                        )}
+                        {isBlocked && (
+                          <DropdownMenuItem disabled className="flex items-center gap-2">
+                            <ShieldOff className="w-4 h-4" />
+                            Utilisateur bloqué
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 )}
 
                 {/* LOCATION & WEBSITE */}
@@ -231,7 +311,7 @@ function ProfilePageClient({
           <TabsContent value="posts" className="mt-6">
             <div className="space-y-6">
               {serializedPosts.length > 0 ? (
-                serializedPosts.map((post) => <PostCard key={post.id} post={post} dbUserId={user.id} />)
+                serializedPosts.map((post) => <PostCard key={post.id} post={post}/>)
               ) : (
                 <div className="text-center py-8 text-muted-foreground">No posts yet</div>
               )}
@@ -241,7 +321,7 @@ function ProfilePageClient({
           <TabsContent value="likes" className="mt-6">
             <div className="space-y-6">
               {serializedLikedPosts.length > 0 ? (
-                serializedLikedPosts.map((post) => <PostCard key={post.id} post={post} dbUserId={user.id} />)
+                serializedLikedPosts.map((post) => <PostCard key={post.id} post={post} />)
               ) : (
                 <div className="text-center py-8 text-muted-foreground">No liked posts to show</div>
               )}

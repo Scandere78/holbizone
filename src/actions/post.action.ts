@@ -85,11 +85,30 @@ export async function createPost(content: string, image?: string) {
 }
 
 /**
- * Récupérer tous les posts
+ * Récupérer tous les posts en excluant les utilisateurs bloqués
  */
 export async function getPosts() {
   try {
+    // Récupérer l'ID de l'utilisateur actuel pour filtrer les bloqués
+    const currentUserId = await getDbUserId();
+
+    // Récupérer les IDs des utilisateurs bloqués par l'utilisateur actuel
+    let blockedUserIds: string[] = [];
+    if (currentUserId) {
+      const blocks = await prisma.block.findMany({
+        where: { blockerId: currentUserId },
+        select: { blockedId: true },
+      });
+      blockedUserIds = blocks.map(block => block.blockedId);
+    }
+
     const posts = await prisma.post.findMany({
+      where: {
+        // Exclure les posts des utilisateurs bloqués
+        authorId: {
+          notIn: blockedUserIds.length > 0 ? blockedUserIds : undefined,
+        },
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -103,6 +122,12 @@ export async function getPosts() {
           },
         },
         comments: {
+          // Filtrer également les commentaires des utilisateurs bloqués
+          where: {
+            authorId: {
+              notIn: blockedUserIds.length > 0 ? blockedUserIds : undefined,
+            },
+          },
           include: {
             author: {
               select: {
@@ -134,7 +159,7 @@ export async function getPosts() {
     logger.debug({
       context: "getPosts",
       action: "Posts fetched successfully",
-      details: { count: posts.length },
+      details: { count: posts.length, blockedUsersFiltered: blockedUserIds.length },
     });
 
     return posts;

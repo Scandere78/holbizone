@@ -8,7 +8,6 @@ import { getDbUserId } from "@/actions/user.action";
 export default async function Home() {
   const user = await currentUser();
   const posts = await getPosts(); // Assuming you have a function to fetch posts
-  const dbUserId = await getDbUserId();
 
   // ✅ Convertir les dates en string pour la sérialisation
   const serializedPosts = posts.map(post => ({
@@ -30,7 +29,7 @@ export default async function Home() {
 
       <div className="space-y-6">
         {serializedPosts.map((post) => (
-          <PostCard key={post.id} post={post} dbUserId={dbUserId} />
+          <PostCard key={post.id} post={post} />
         ))}
       </div>
     </div>

@@ -25,6 +25,7 @@ model User {
   website String?
   createdAt DateTime @default(now()) // member since / account creation date
   updatedAt DateTime @updatedAt
+  bookmarks Bookmark[] @relation("UserBookmarks")
 
   // Relations: 
   posts Post[] // One-to-many
@@ -37,9 +38,13 @@ model User {
   notifications Notification[] @relation("userNotifications") // notifications received by a user
   notificationsCreated Notification[] @relation("notificationCreator") // notifications triggered by a user
 
-   sentMessages Message[] @relation("messageSender")
+  sentMessages Message[] @relation("messageSender")
   conversationMembers ConversationMember[]
   conversationsCreated Conversation[] @relation("conversationCreator")
+
+  // Blocking
+  blockedBy Block[] @relation("BlockedBy") // users who blocked me
+  blocking Block[] @relation("Blocking") // users I blocked
 }
 
 model Conversation {
@@ -105,6 +110,7 @@ model Post{
   image String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  bookmarks Bookmark[] @relation("PostBookmarks")
 
   // Relations
   author User @relation(fields: [authorId],references: [id], onDelete: Cascade) // cascade delete means delete all posts if author is deleted
@@ -112,6 +118,33 @@ model Post{
   likes Like[]
   notifications Notification[]
 }
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserBookmarks", fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation("PostBookmarks", fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("BlockedBy", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("Blocking", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
 
 
 model Comment{

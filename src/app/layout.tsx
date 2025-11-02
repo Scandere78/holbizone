@@ -29,7 +29,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "HolbiHub",
+  title: "HolbiZone",
   description: "Plateforme collaborative pour Holberton School",
   icons: {
     icon: "/logo.png",
