@@ -6,15 +6,15 @@ import { Loader2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 import { toggleFollow } from "@/actions/user.action";
 
-function FollowButton({
-  userId,
+interface FollowButtonProps {
+  targetUserId: string; // ✅ L'utilisateur à follow
+  isFollowing?: boolean; // ✅ État initial
+}
+
+export default function FollowButton({
   targetUserId,
   isFollowing = false,
-}: {
-  userId?: string;
-  targetUserId?: string;
-  isFollowing?: boolean;
-}) {
+}: FollowButtonProps) {
   const [following, setFollowing] = useState(isFollowing);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -22,15 +22,15 @@ function FollowButton({
     setIsLoading(true);
 
     try {
-      const id = targetUserId || userId;
-      if (!id) throw new Error("User ID is required");
+      if (!targetUserId) throw new Error("User ID is required");
 
-      await toggleFollow(id);
+      await toggleFollow(targetUserId);
       setFollowing(!following);
       toast.success(
         following ? "Unfollowed successfully" : "Followed successfully"
       );
     } catch (error) {
+      console.error("Follow error:", error);
       toast.error("Error toggling follow");
     } finally {
       setIsLoading(false);
@@ -39,11 +39,11 @@ function FollowButton({
 
   return (
     <Button
-      size={"sm"}
-      variant={following ? "outline" : "secondary"}
+      size="sm"
+      variant={following ? "outline" : "default"}
       onClick={handleFollow}
       disabled={isLoading}
-      className="w-24"
+      className={following ? "border-red-300 text-red-600 hover:bg-red-50" : "bg-red-600 hover:bg-red-700"}
     >
       {isLoading ? (
         <Loader2Icon className="size-4 animate-spin" />
@@ -55,4 +55,3 @@ function FollowButton({
     </Button>
   );
 }
-export default FollowButton;

@@ -54,7 +54,7 @@ async function WhoToFollow() {
                     </div>
                   </div>
                   
-                  <FollowButton userId={user.id} />
+                  <FollowButton targetUserId={user.id} isFollowing={false} />
                 </div>
                 {index < users.length - 1 && <Separator className="my-2" />}
               </div>

@@ -138,7 +138,7 @@ export default function CommentCard({
       {/* Modal d'édition */}
       <EditCommentDialog
         isOpen={isEditDialogOpen}
-        onClose={() => setIsEditDialogOpen(false)}
+        onCloseAction={() => setIsEditDialogOpen(false)}
         comment={comment}
         onSuccess={() => window.location.reload()}
       />

@@ -19,30 +19,31 @@ import { Loader2 } from 'lucide-react';
  */
 interface EditCommentDialogProps {
   isOpen: boolean;
-  onClose: () => void;
-  comment: {
-    id: string;
-    content: string;
-  };
+  onCloseAction: () => void; // ✅ Renommé de onClose
+  comment: any;
   onSuccess?: () => void;
 }
 
 export default function EditCommentDialog({
   isOpen,
-  onClose,
+  onCloseAction,
   comment,
   onSuccess,
 }: EditCommentDialogProps) {
-  const [content, setContent] = useState(comment.content);
+  // ✅ AJOUTER LES STATES
+  const [content, setContent] = useState(comment?.content || '');
   const [isLoading, setIsLoading] = useState(false);
 
+  // ✅ Calculer les caractères restants
   const remainingChars = 500 - content.length;
 
+  // ✅ Fermer le dialog
   const handleClose = () => {
-    setContent(comment.content);
-    onClose();
+    setContent(comment?.content || '');
+    onCloseAction();
   };
 
+  // ✅ Soumettre l'édition
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -56,8 +57,9 @@ export default function EditCommentDialog({
       return;
     }
 
-    if (content.trim() === comment.content.trim()) {
+    if (content.trim() === comment?.content?.trim()) {
       toast.success('Aucune modification');
+      handleClose();
       return;
     }
 
@@ -71,7 +73,7 @@ export default function EditCommentDialog({
         return;
       }
 
-      toast.success('Commentaire édité !');
+      toast.success('Commentaire édité ! ✅');
       handleClose();
       onSuccess?.();
     } catch (error) {
@@ -84,29 +86,35 @@ export default function EditCommentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] border-red-100 dark:border-red-950/50">
         <DialogHeader>
-          <DialogTitle>✏️ Éditer le commentaire</DialogTitle>
+          <DialogTitle className="text-xl">✏️ Éditer le commentaire</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Textarea */}
           <div className="space-y-2">
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Votre commentaire..."
-              className="min-h-[100px] resize-none border-red-200"
+              className="min-h-[100px] resize-none border-red-200 dark:border-red-900/50 focus:border-red-500"
               disabled={isLoading}
               maxLength={500}
             />
 
+            {/* Compteur de caractères */}
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">
                 {content.length} / 500 caractères
               </span>
               <span
                 className={`font-semibold ${
-                  remainingChars < 50 ? 'text-orange-500' : 'text-green-500'
+                  remainingChars < 50
+                    ? 'text-orange-500'
+                    : remainingChars > 100
+                      ? 'text-green-500'
+                      : 'text-yellow-500'
                 }`}
               >
                 {remainingChars} restants
@@ -114,11 +122,22 @@ export default function EditCommentDialog({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
+          {/* Footer avec boutons */}
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isLoading}
+              className="border-red-200 hover:bg-red-50"
+            >
               Annuler
             </Button>
-            <Button type="submit" disabled={isLoading || !content.trim()}>
+            <Button
+              type="submit"
+              disabled={isLoading || !content.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
