@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { sendMessage } from "@/actions/message.action";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,7 @@ interface MessageInputProps {
 }
 
 export default function MessageInput({ conversationId }: MessageInputProps) {
+  const router = useRouter();
   const [content, setContent] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -33,6 +35,7 @@ export default function MessageInput({ conversationId }: MessageInputProps) {
       if (result.success) {
         setContent("");
         setImage(null);
+        router.refresh();
       } else {
         toast.error("Erreur lors de l'envoi du message");
       }

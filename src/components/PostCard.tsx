@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -51,7 +52,8 @@ export default function PostCard({
   onPostUpdated,
 }: PostCardProps) {
   const { user: clerkUser } = useUser();
-  
+  const router = useRouter();
+
   // États
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post._count?.likes || 0);
@@ -169,6 +171,7 @@ export default function PostCard({
       if (result.success) {
         toast.success('✅ Post supprimé');
         onPostDeleted?.();
+        router.refresh();
       } else {
         toast.error(result.error || 'Erreur');
       }
@@ -400,6 +403,7 @@ export default function PostCard({
         onSuccess={() => {
           setIsEditOpen(false);
           onPostUpdated?.();
+          router.refresh();
         }}
       />
 

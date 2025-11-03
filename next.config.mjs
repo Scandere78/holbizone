@@ -115,12 +115,12 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.clerk.com https://challenges.cloudflare.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.clerk.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: https: blob:",
               "font-src 'self' https://fonts.gstatic.com data:",
               "connect-src 'self' https: ws: wss:",
-              "frame-src 'self' https://challenges.cloudflare.com",
+              "frame-src 'self' https://challenges.cloudflare.com https://*.clerk.accounts.dev",
               "form-action 'self'",
               "base-uri 'self'",
             ].join('; '),
@@ -189,34 +189,37 @@ const nextConfig = {
   // ========================
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      config.optimization.splitChunks.cacheGroups = {
-        ...config.optimization.splitChunks.cacheGroups,
-        // Isoler les vendors lourds
-        radix: {
-          test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
-          name: 'radix',
-          priority: 10,
-          enforce: true,
-        },
-        lucide: {
-          test: /[\\/]node_modules[\\/]lucide-react[\\/]/,
-          name: 'lucide',
-          priority: 10,
-          enforce: true,
-        },
-        clerk: {
-          test: /[\\/]node_modules[\\/]@clerk[\\/]/,
-          name: 'clerk',
-          priority: 10,
-          enforce: true,
-        },
-        prisma: {
-          test: /[\\/]node_modules[\\/]@prisma[\\/]/,
-          name: 'prisma',
-          priority: 10,
-          enforce: true,
-        },
-      };
+      // Vérifier que splitChunks existe et est un objet avant de le modifier
+      if (config.optimization.splitChunks && typeof config.optimization.splitChunks === 'object') {
+        config.optimization.splitChunks.cacheGroups = {
+          ...config.optimization.splitChunks.cacheGroups,
+          // Isoler les vendors lourds
+          radix: {
+            test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
+            name: 'radix',
+            priority: 10,
+            enforce: true,
+          },
+          lucide: {
+            test: /[\\/]node_modules[\\/]lucide-react[\\/]/,
+            name: 'lucide',
+            priority: 10,
+            enforce: true,
+          },
+          clerk: {
+            test: /[\\/]node_modules[\\/]@clerk[\\/]/,
+            name: 'clerk',
+            priority: 10,
+            enforce: true,
+          },
+          prisma: {
+            test: /[\\/]node_modules[\\/]@prisma[\\/]/,
+            name: 'prisma',
+            priority: 10,
+            enforce: true,
+          },
+        };
+      }
     }
 
     return config;
@@ -248,11 +251,6 @@ const nextConfig = {
   // TRAILINGSLASH
   // ========================
   trailingSlash: false,
-
-  // ========================
-  // STRICTHOSTCHECK
-  // ========================
-  strictHostCheck: false,
 };
 
 export default withAnalyzer(nextConfig);

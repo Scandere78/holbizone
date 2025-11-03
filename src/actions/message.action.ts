@@ -405,6 +405,7 @@ export async function sendMessage(data: {
     });
 
     revalidatePath(`/messages/${validatedData.conversationId}`);
+    revalidatePath("/messages");
     return { success: true, message };
   } catch (error) {
     logger.error({

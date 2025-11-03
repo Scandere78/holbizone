@@ -407,6 +407,7 @@ export async function deletePost(postId: string) {
       where: { id: postId },
     });
 
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     logger.error({
@@ -768,7 +769,8 @@ export async function updatePost(postId: string, content: string) {
       action: "Post updated successfully",
       details: { postId },
     });
-    
+
+    revalidatePath("/");
     return { success: true, data: updatedPost };
   } catch (error) {
     logger.error({

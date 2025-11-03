@@ -1,4 +1,4 @@
-import { currentUser } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { SignInButton, SignUpButton } from '@clerk/nextjs';
@@ -16,11 +16,11 @@ import { logger } from '@/lib/logger';
  */
 async function Sidebar() {
   try {
-    // Récupérer l'utilisateur Clerk authentifié
-    const authUser = await currentUser();
+    // Récupérer l'ID de l'utilisateur depuis auth()
+    const { userId } = await auth();
 
     // Si aucun utilisateur n'est authentifié, afficher le sidebar de connexion
-    if (!authUser) {
+    if (!userId) {
       logger.debug({
         context: 'Sidebar',
         action: 'Rendering unauthenticated sidebar',
@@ -29,13 +29,13 @@ async function Sidebar() {
     }
 
     // Récupérer les données de l'utilisateur depuis la base de données
-    const user = await getUserByClerkId(authUser.id);
+    const user = await getUserByClerkId(userId);
 
     if (!user) {
       logger.warn({
         context: 'Sidebar',
         action: 'User not found in database',
-        details: { clerkId: authUser.id },
+        details: { clerkId: userId },
       });
       return <ErrorSidebar message="Profil utilisateur non trouvé" />;
     }
@@ -242,14 +242,15 @@ const ErrorSidebar = ({ message }: ErrorSidebarProps) => (
           <p className="text-muted-foreground text-sm">{message}</p>
         </div>
 
-        {/* Bouton pour recharger */}
-        <Button
-          variant="outline"
-          className="w-full border-red-600 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
-          onClick={() => window.location.reload()}
-        >
-          Réessayer
-        </Button>
+        {/* Bouton pour recharger - Link au lieu de onClick */}
+        <Link href="/">
+          <Button
+            variant="outline"
+            className="w-full border-red-600 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
+          >
+            Retour à l'accueil
+          </Button>
+        </Link>
       </CardContent>
     </Card>
   </div>
