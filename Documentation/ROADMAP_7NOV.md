@@ -324,7 +324,7 @@ Finals (6-7 nov):      Tests & Déploiement      [LAUNCH]
 
 ---
 
-### 🟡 JOUR 10 - Mercredi 5 Novembre (8h)
+/### 🟡 JOUR 10 - Mercredi 5 Novembre (8h)
 **Thème:** UX & Polish
 
 #### Matin (4h)
