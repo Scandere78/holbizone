@@ -1,4 +1,4 @@
-# Architecture Générale - HolbiHub test
+# Architecture Générale - HolbiHub 
 
 ## 📋 Vue d'ensemble
 
