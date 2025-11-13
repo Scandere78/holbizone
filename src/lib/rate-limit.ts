@@ -1,44 +1,48 @@
 // @ts-nocheck
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import type { Ratelimit } from "@upstash/ratelimit";
+import type { Redis } from "@upstash/redis";
 import { logger } from "./logger";
 
 /**
  * Configuration du Rate Limiting avec Upstash Redis
  *
- * IMPORTANT: Toutes les erreurs sont silencieuses pour ne jamais bloquer le build
+ * IMPORTANT: Utilise dynamic imports pour éviter l'initialisation pendant le build
  */
 
 // ============================================
-// SAFE REDIS INITIALIZATION (LAZY)
+// SAFE REDIS INITIALIZATION (DYNAMIC IMPORT)
 // ============================================
 
 let redisInstance: Redis | null = null;
 let redisInitialized = false;
 
-function getRedis(): Redis | null {
-  // Skip during build time
-  if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && !process.env.UPSTASH_REDIS_REST_URL) {
-    return null;
-  }
-
+async function getRedis(): Promise<Redis | null> {
   if (redisInitialized) {
     return redisInstance;
   }
 
   try {
-    // Vérifier les variables d'environnement
+    // Vérifier les variables d'environnement AVANT toute tentative de connexion
     if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
       redisInitialized = true;
+      redisInstance = null;
       return null;
     }
 
-    redisInstance = Redis.fromEnv();
+    // Dynamic import pour éviter l'exécution pendant le build
+    const { Redis } = await import("@upstash/redis");
+
+    // Créer l'instance Redis avec les credentials explicites
+    redisInstance = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
     redisInitialized = true;
     return redisInstance;
   } catch (error) {
     // Silencieux - ne pas bloquer le build
     redisInitialized = true;
+    redisInstance = null;
     return null;
   }
 }
@@ -56,17 +60,19 @@ let uploadRateLimitInstance: Ratelimit | null | undefined = undefined;
 /**
  * Rate limit pour les POSTS
  */
-function getPostRateLimit(): Ratelimit | null {
+async function getPostRateLimit(): Promise<Ratelimit | null> {
   if (postRateLimitInstance !== undefined) {
     return postRateLimitInstance;
   }
 
   try {
-    const redis = getRedis();
+    const redis = await getRedis();
     if (!redis) {
       postRateLimitInstance = null;
       return null;
     }
+
+    const { Ratelimit } = await import("@upstash/ratelimit");
 
     postRateLimitInstance = new Ratelimit({
       redis,
@@ -86,17 +92,19 @@ export const postRateLimit = { get: getPostRateLimit };
 /**
  * Rate limit pour les MESSAGES
  */
-function getMessageRateLimit(): Ratelimit | null {
+async function getMessageRateLimit(): Promise<Ratelimit | null> {
   if (messageRateLimitInstance !== undefined) {
     return messageRateLimitInstance;
   }
 
   try {
-    const redis = getRedis();
+    const redis = await getRedis();
     if (!redis) {
       messageRateLimitInstance = null;
       return null;
     }
+
+    const { Ratelimit } = await import("@upstash/ratelimit");
 
     messageRateLimitInstance = new Ratelimit({
       redis,
@@ -116,17 +124,19 @@ export const messageRateLimit = { get: getMessageRateLimit };
 /**
  * Rate limit pour les COMMENTAIRES
  */
-function getCommentRateLimit(): Ratelimit | null {
+async function getCommentRateLimit(): Promise<Ratelimit | null> {
   if (commentRateLimitInstance !== undefined) {
     return commentRateLimitInstance;
   }
 
   try {
-    const redis = getRedis();
+    const redis = await getRedis();
     if (!redis) {
       commentRateLimitInstance = null;
       return null;
     }
+
+    const { Ratelimit } = await import("@upstash/ratelimit");
 
     commentRateLimitInstance = new Ratelimit({
       redis,
@@ -146,17 +156,19 @@ export const commentRateLimit = { get: getCommentRateLimit };
 /**
  * Rate limit pour les LIKES
  */
-function getLikeRateLimit(): Ratelimit | null {
+async function getLikeRateLimit(): Promise<Ratelimit | null> {
   if (likeRateLimitInstance !== undefined) {
     return likeRateLimitInstance;
   }
 
   try {
-    const redis = getRedis();
+    const redis = await getRedis();
     if (!redis) {
       likeRateLimitInstance = null;
       return null;
     }
+
+    const { Ratelimit } = await import("@upstash/ratelimit");
 
     likeRateLimitInstance = new Ratelimit({
       redis,
@@ -176,17 +188,19 @@ export const likeRateLimit = { get: getLikeRateLimit };
 /**
  * Rate limit pour les UPLOADS D'IMAGES
  */
-function getUploadRateLimit(): Ratelimit | null {
+async function getUploadRateLimit(): Promise<Ratelimit | null> {
   if (uploadRateLimitInstance !== undefined) {
     return uploadRateLimitInstance;
   }
 
   try {
-    const redis = getRedis();
+    const redis = await getRedis();
     if (!redis) {
       uploadRateLimitInstance = null;
       return null;
     }
+
+    const { Ratelimit } = await import("@upstash/ratelimit");
 
     uploadRateLimitInstance = new Ratelimit({
       redis,
@@ -208,13 +222,13 @@ export const uploadRateLimit = { get: getUploadRateLimit };
  * Retourne { success, remaining, resetAfter }
  */
 export async function checkRateLimit(
-  limiter: { get: () => Ratelimit | null } | Ratelimit | null,
+  limiter: { get: () => Promise<Ratelimit | null> } | Ratelimit | null,
   identifier: string,
   context: string
 ): Promise<{ success: boolean; remaining: number; resetAfter: number }> {
   // Obtenir l'instance réelle du limiter
   const actualLimiter = limiter && typeof limiter === 'object' && 'get' in limiter
-    ? limiter.get()
+    ? await limiter.get()
     : limiter;
 
   // Si le limiter est null, laisser passer

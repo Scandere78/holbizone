@@ -19,7 +19,9 @@
       "Bash(git push:*)",
       "Bash(npx prisma migrate:*)",
       "Bash(tree:*)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
