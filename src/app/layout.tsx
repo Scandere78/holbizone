@@ -16,6 +16,10 @@ import { getUnreadNotificationCount } from "@/actions/notification.action";
 import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 
+// ✅ FORCE DYNAMIC RENDERING - Clerk nécessite l'auth sur chaque page
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",

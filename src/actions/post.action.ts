@@ -18,7 +18,7 @@ import { getUserByClerkId } from "./user.action";
 export async function createPost(content: string, image?: string) {
   try {
     // Étape 1: Récupérer l'utilisateur
-    
+
 
     const userId = await getDbUserId();
     if (!userId) {
@@ -581,7 +581,7 @@ export async function getPostById(postId: string) {
 
 /**
  * Éditer un commentaire existant
- * 
+ *
  * ✅ ÉTAPES:
  * 1. Vérifier authentification
  * 2. Vérifier que le commentaire existe
@@ -690,7 +690,7 @@ export async function editComment(
 
 /**
  * Supprimer un commentaire
- * 
+ *
  * ✅ ÉTAPES:
  * 1. Vérifier authentification
  * 2. Vérifier que le commentaire existe
