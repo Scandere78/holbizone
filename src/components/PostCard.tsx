@@ -128,28 +128,28 @@ export default function PostCard({
       setIsLoadingLike(true);
       const newLikedState = !isLiked;
       const previousLikeCount = likeCount;
+      const previousLikedState = isLiked;
 
       // Optimistic update
       setIsLiked(newLikedState);
-      setLikeCount(newLikedState ? likeCount + 1 : likeCount - 1);
+      setLikeCount(newLikedState ? likeCount + 1 : Math.max(0, likeCount - 1));
 
       const result = await toggleLike(post.id);
 
       if (result.success) {
         toast.success(
-          newLikedState ? '❤️ Post aimé!' : 'Like retiré'
+          newLikedState ? '❤️ Post aimé !' : '💔 J\'aime retiré'
         );
       } else {
         // Revert state on error
-        setIsLiked(!newLikedState);
+        setIsLiked(previousLikedState);
         setLikeCount(previousLikeCount);
-        toast.error(result.error || 'Erreur');
+        toast.error(result.error || 'Erreur lors du like');
       }
     } catch (error) {
       // Revert state on error
-      const previousState = !isLiked;
-      setIsLiked(previousState);
-      setLikeCount(previousState ? likeCount - 1 : likeCount + 1);
+      setIsLiked(!isLiked);
+      setLikeCount(likeCount);
       toast.error('Erreur lors du like');
     } finally {
       setIsLoadingLike(false);
@@ -352,60 +352,68 @@ export default function PostCard({
 
         {/* ===== STATS ===== */}
         <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground border-t border-b border-red-100 dark:border-red-950/50 py-3">
-          <span>{likeCount} J'aime</span>
-          <span>{post._count?.comments || 0} Commentaires</span>
+          <span className="font-medium">
+            {likeCount > 0 ? `${likeCount} ${likeCount === 1 ? 'J\'aime' : 'J\'aime'}` : '0 J\'aime'}
+          </span>
+          <span className="font-medium">
+            {post._count?.comments > 0 ? `${post._count.comments} ${post._count.comments === 1 ? 'Commentaire' : 'Commentaires'}` : '0 Commentaire'}
+          </span>
         </div>
 
         {/* ===== ACTIONS ===== */}
-        <div className="flex items-center justify-around gap-2">
+        <div className="flex items-center justify-between gap-1 sm:gap-2">
           {/* Like Button */}
           <button
             onClick={handleLike}
             disabled={isLoadingLike}
-            className={`flex items-center justify-center gap-2 flex-1 px-3 py-2 rounded-lg transition-all ${
+            className={`flex items-center justify-center gap-1 sm:gap-2 flex-1 px-2 sm:px-3 py-2 rounded-lg transition-all ${
               isLiked
                 ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
                 : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600'
             }`}
           >
             <Heart
-              className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`}
+              className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${isLiked ? 'fill-current' : ''}`}
             />
-            <span className="text-xs font-medium">J'aime</span>
+            <span className="text-xs sm:text-sm font-medium hidden sm:inline">
+              {isLiked ? 'Aimé' : 'J\'aime'}
+            </span>
           </button>
 
           {/* Comment Button */}
           <Link
             href={`/post/${post.id}`}
-            className="flex items-center justify-center gap-2 flex-1 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 transition-all"
+            className="flex items-center justify-center gap-1 sm:gap-2 flex-1 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 transition-all"
           >
-            <MessageCircle className="w-4 h-4" />
-            <span className="text-xs font-medium">Commenter</span>
+            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <span className="text-xs sm:text-sm font-medium hidden sm:inline">Commenter</span>
           </Link>
 
           {/* Bookmark Button */}
           <button
             onClick={handleBookmark}
             disabled={isLoadingBookmark}
-            className={`flex items-center justify-center gap-2 flex-1 px-3 py-2 rounded-lg transition-all ${
+            className={`flex items-center justify-center gap-1 sm:gap-2 flex-1 px-2 sm:px-3 py-2 rounded-lg transition-all ${
               isBookmarked
                 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600'
                 : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600'
             }`}
           >
             <Bookmark
-              className={`w-4 h-4 ${isBookmarked ? 'fill-current' : ''}`}
+              className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${isBookmarked ? 'fill-current' : ''}`}
             />
-            <span className="text-xs font-medium">Sauvegarder</span>
+            <span className="text-xs sm:text-sm font-medium hidden sm:inline">
+              {isBookmarked ? 'Sauvegardé' : 'Sauvegarder'}
+            </span>
           </button>
 
           {/* Share Button */}
           <button
             onClick={handleShare}
-            className="flex items-center justify-center gap-2 flex-1 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 transition-all"
+            className="flex items-center justify-center gap-1 sm:gap-2 flex-1 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 transition-all"
           >
-            <Share2 className="w-4 h-4" />
-            <span className="text-xs font-medium">Partager</span>
+            <Share2 className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <span className="text-xs sm:text-sm font-medium hidden sm:inline">Partager</span>
           </button>
         </div>
       </Card>
