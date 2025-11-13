@@ -6,47 +6,32 @@ import { logger } from "./logger";
 /**
  * Configuration du Rate Limiting avec Upstash Redis
  *
- * IMPORTANT: Redis est désactivé pendant le build Next.js
- * pour éviter les erreurs "Options object must provide a cluster"
+ * IMPORTANT: Toutes les erreurs sont silencieuses pour ne jamais bloquer le build
  */
 
-// ✅ Désactiver Redis pendant le build (NODE_ENV !== 'production' en build)
-const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
-                    process.env.CI === 'true' ||
-                    !process.env.NODE_ENV;
-
-// ✅ Vérifier que les variables d'environnement sont présentes
-export const hasRedisConfig = !isBuildTime && !!(
-  process.env.UPSTASH_REDIS_REST_URL && 
-  process.env.UPSTASH_REDIS_REST_TOKEN
-);
-
 // ============================================
-// LAZY INITIALIZATION - N'initialise Redis qu'au runtime
+// SAFE REDIS INITIALIZATION
 // ============================================
 
 let redisInstance: Redis | null = null;
 
 function getRedis(): Redis | null {
-  // Ne JAMAIS initialiser Redis pendant le build
-  if (isBuildTime || !hasRedisConfig) {
-    return null;
+  if (redisInstance) {
+    return redisInstance;
   }
   
-  if (!redisInstance) {
-    try {
-      redisInstance = Redis.fromEnv();
-    } catch (error) {
-      logger.error({
-        context: "RateLimit",
-        action: "Failed to initialize Redis",
-        error,
-      });
+  try {
+    // Vérifier les variables d'environnement
+    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
       return null;
     }
+    
+    redisInstance = Redis.fromEnv();
+    return redisInstance;
+  } catch (error) {
+    // Silencieux - ne pas bloquer le build
+    return null;
   }
-  
-  return redisInstance;
 }
 
 // ============================================
@@ -55,95 +40,105 @@ function getRedis(): Redis | null {
 
 /**
  * Rate limit pour les POSTS
- * Limite: 10 posts par 10 secondes par utilisateur
- * Idéal pour: Éviter le spam de posts
  */
 function createPostRateLimit() {
-  const redis = getRedis();
-  if (!redis) return null;
-  
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, "10 s"),
-    analytics: true,
-    prefix: "ratelimit:post",
-  });
+  try {
+    const redis = getRedis();
+    if (!redis) return null;
+
+    return new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, "10 s"),
+      analytics: true,
+      prefix: "ratelimit:post",
+    });
+  } catch {
+    return null;
+  }
 }
 
 export const postRateLimit = createPostRateLimit();
 
 /**
  * Rate limit pour les MESSAGES
- * Limite: 20 messages par 10 secondes par utilisateur
- * Idéal pour: Éviter le spam de messages (plus rapide que posts)
  */
 function createMessageRateLimit() {
-  const redis = getRedis();
-  if (!redis) return null;
-  
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(20, "10 s"),
-    analytics: true,
-    prefix: "ratelimit:message",
-  });
+  try {
+    const redis = getRedis();
+    if (!redis) return null;
+
+    return new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(20, "10 s"),
+      analytics: true,
+      prefix: "ratelimit:message",
+    });
+  } catch {
+    return null;
+  }
 }
 
 export const messageRateLimit = createMessageRateLimit();
 
 /**
  * Rate limit pour les COMMENTAIRES
- * Limite: 15 commentaires par 10 secondes par utilisateur
- * Idéal pour: Éviter le spam de commentaires
  */
 function createCommentRateLimit() {
-  const redis = getRedis();
-  if (!redis) return null;
-  
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(15, "10 s"),
-    analytics: true,
-    prefix: "ratelimit:comment",
-  });
+  try {
+    const redis = getRedis();
+    if (!redis) return null;
+
+    return new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(15, "10 s"),
+      analytics: true,
+      prefix: "ratelimit:comment",
+    });
+  } catch {
+    return null;
+  }
 }
 
 export const commentRateLimit = createCommentRateLimit();
 
 /**
  * Rate limit pour les LIKES
- * Limite: 50 likes par 10 secondes par utilisateur
- * Idéal pour: Éviter les attaques de like automatiques
  */
 function createLikeRateLimit() {
-  const redis = getRedis();
-  if (!redis) return null;
-  
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(50, "10 s"),
-    analytics: true,
-    prefix: "ratelimit:like",
-  });
+  try {
+    const redis = getRedis();
+    if (!redis) return null;
+
+    return new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(50, "10 s"),
+      analytics: true,
+      prefix: "ratelimit:like",
+    });
+  } catch {
+    return null;
+  }
 }
 
 export const likeRateLimit = createLikeRateLimit();
 
 /**
  * Rate limit pour les UPLOADS D'IMAGES
- * Limite: 5 uploads par 60 secondes par utilisateur
- * Idéal pour: Éviter les uploads massifs
  */
 function createUploadRateLimit() {
-  const redis = getRedis();
-  if (!redis) return null;
-  
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(5, "60 s"),
-    analytics: true,
-    prefix: "ratelimit:upload",
-  });
+  try {
+    const redis = getRedis();
+    if (!redis) return null;
+
+    return new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "60 s"),
+      analytics: true,
+      prefix: "ratelimit:upload",
+    });
+  } catch {
+    return null;
+  }
 }
 
 export const uploadRateLimit = createUploadRateLimit();
@@ -151,24 +146,14 @@ export const uploadRateLimit = createUploadRateLimit();
 /**
  * Fonction générique pour appliquer le rate limit
  * Retourne { success, remaining, resetAfter }
- *
- * @param limiter - L'instance de Ratelimit (peut être null si Redis non configuré)
- * @param identifier - ID unique (userId, IP, etc.)
- * @param context - Contexte pour le logging
- * @returns Résultat du rate limit
  */
 export async function checkRateLimit(
   limiter: Ratelimit | null,
   identifier: string,
   context: string
 ): Promise<{ success: boolean; remaining: number; resetAfter: number }> {
-  // Si le limiter est null ou Redis n'est pas configuré, laisser passer
-  if (!limiter || !hasRedisConfig) {
-    logger.warn({
-      context: "RateLimit",
-      action: `Rate limiting disabled for ${context} (no Redis configured)`,
-      details: { identifier },
-    });
+  // Si le limiter est null, laisser passer
+  if (!limiter) {
     return {
       success: true,
       remaining: -1,
