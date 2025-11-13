@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { pusherClient } from '@/lib/pusher';
+import { getPusherClient } from '@/lib/pusher';
 import { getUnreadCountForConversation } from '@/actions/message.action';
 
 interface ConversationBadgeProps {
@@ -16,19 +16,27 @@ export default function ConversationBadge({ conversationId }: ConversationBadgeP
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    let channel: any = null;
+
     // Charger le nombre initial de messages non lus
     getUnreadCountForConversation(conversationId).then(setUnreadCount);
 
-    // S'abonner aux nouveaux messages
-    const channel = pusherClient.subscribe(`conversation-${conversationId}`);
+    // S'abonner aux nouveaux messages avec Pusher
+    getPusherClient().then((pusher) => {
+      if (!pusher) return;
 
-    channel.bind('new-message', () => {
-      getUnreadCountForConversation(conversationId).then(setUnreadCount);
+      channel = pusher.subscribe(`conversation-${conversationId}`);
+
+      channel.bind('new-message', () => {
+        getUnreadCountForConversation(conversationId).then(setUnreadCount);
+      });
     });
 
     return () => {
-      channel.unbind_all();
-      channel.unsubscribe();
+      if (channel) {
+        channel.unbind_all();
+        channel.unsubscribe();
+      }
     };
   }, [conversationId]);
 

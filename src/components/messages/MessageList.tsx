@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { pusherClient } from "@/lib/pusher";
+import { getPusherClient } from "@/lib/pusher";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -43,20 +43,28 @@ export default function MessageList({
 
   // WebSocket - Écouter les nouveaux messages
   useEffect(() => {
-    const channel = pusherClient.subscribe(`conversation-${conversationId}`);
+    let channel: any = null;
 
-    channel.bind("new-message", (newMessage: Message) => {
-      // Éviter les doublons
-      setMessages((prev) => {
-        const exists = prev.some((msg) => msg.id === newMessage.id);
-        if (exists) return prev;
-        return [...prev, newMessage];
+    getPusherClient().then((pusher) => {
+      if (!pusher) return;
+
+      channel = pusher.subscribe(`conversation-${conversationId}`);
+
+      channel.bind("new-message", (newMessage: Message) => {
+        // Éviter les doublons
+        setMessages((prev) => {
+          const exists = prev.some((msg) => msg.id === newMessage.id);
+          if (exists) return prev;
+          return [...prev, newMessage];
+        });
       });
     });
 
     return () => {
-      channel.unbind("new-message");
-      pusherClient.unsubscribe(`conversation-${conversationId}`);
+      if (channel) {
+        channel.unbind("new-message");
+        channel.unsubscribe();
+      }
     };
   }, [conversationId]);
 

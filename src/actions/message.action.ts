@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { getPusherServer } from "@/lib/pusher";
 import { getDbUserId } from "./user.action";
 import { revalidatePath } from "next/cache";
 import { SendMessageSchema, CreateConversationSchema } from "@/lib/validations/message.validation";
@@ -388,11 +388,15 @@ export async function sendMessage(data: {
       },
     });
 
-    await pusherServer.trigger(
-      `conversation-${validatedData.conversationId}`,
-      "new-message",
-      message
-    );
+    // Trigger Pusher notification (si disponible)
+    const pusher = await getPusherServer();
+    if (pusher) {
+      await pusher.trigger(
+        `conversation-${validatedData.conversationId}`,
+        "new-message",
+        message
+      );
+    }
 
     logger.info({
       context: "sendMessage",
