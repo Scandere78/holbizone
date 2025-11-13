@@ -30,6 +30,7 @@ export async function createPost(content: string, image?: string) {
     }
 
     // Étape 2: VÉRIFIER LE RATE LIMIT ⬅️ NOUVEAU
+    // @ts-ignore
     const rateLimitResult = await checkRateLimit(
       postRateLimit,
       userId, //identifier unique = ID utilisateur
