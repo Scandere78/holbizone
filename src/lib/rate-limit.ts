@@ -6,35 +6,33 @@ import { logger } from "./logger";
 /**
  * Configuration du Rate Limiting avec Upstash Redis
  *
- * IMPORTANT: Redis est initialisé de manière lazy (à la demande)
- * pour éviter les erreurs pendant le build Next.js
+ * IMPORTANT: Redis est désactivé pendant le build Next.js
+ * pour éviter les erreurs "Options object must provide a cluster"
  */
 
+// ✅ Désactiver Redis pendant le build (NODE_ENV !== 'production' en build)
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
+                    process.env.CI === 'true' ||
+                    !process.env.NODE_ENV;
+
 // ✅ Vérifier que les variables d'environnement sont présentes
-export const hasRedisConfig = !!(
-<<<<<<< HEAD
-  process.env.UPSTASH_REDIS_REST_URL &&
-=======
+export const hasRedisConfig = !isBuildTime && !!(
   process.env.UPSTASH_REDIS_REST_URL && 
->>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   process.env.UPSTASH_REDIS_REST_TOKEN
 );
 
 // ============================================
-// LAZY INITIALIZATION - N'initialise Redis qu'au premier usage
+// LAZY INITIALIZATION - N'initialise Redis qu'au runtime
 // ============================================
 
 let redisInstance: Redis | null = null;
 
 function getRedis(): Redis | null {
-  if (!hasRedisConfig) {
+  // Ne JAMAIS initialiser Redis pendant le build
+  if (isBuildTime || !hasRedisConfig) {
     return null;
   }
-<<<<<<< HEAD
-
-=======
   
->>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   if (!redisInstance) {
     try {
       redisInstance = Redis.fromEnv();
@@ -47,11 +45,7 @@ function getRedis(): Redis | null {
       return null;
     }
   }
-<<<<<<< HEAD
-
-=======
   
->>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return redisInstance;
 }
 
@@ -67,11 +61,7 @@ function getRedis(): Redis | null {
 function createPostRateLimit() {
   const redis = getRedis();
   if (!redis) return null;
-<<<<<<< HEAD
-
-=======
   
->>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(10, "10 s"),
@@ -90,11 +80,7 @@ export const postRateLimit = createPostRateLimit();
 function createMessageRateLimit() {
   const redis = getRedis();
   if (!redis) return null;
-<<<<<<< HEAD
-
-=======
   
->>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(20, "10 s"),
@@ -113,11 +99,7 @@ export const messageRateLimit = createMessageRateLimit();
 function createCommentRateLimit() {
   const redis = getRedis();
   if (!redis) return null;
-<<<<<<< HEAD
-
-=======
   
->>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(15, "10 s"),
@@ -136,11 +118,7 @@ export const commentRateLimit = createCommentRateLimit();
 function createLikeRateLimit() {
   const redis = getRedis();
   if (!redis) return null;
-<<<<<<< HEAD
-
-=======
   
->>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(50, "10 s"),
@@ -159,11 +137,7 @@ export const likeRateLimit = createLikeRateLimit();
 function createUploadRateLimit() {
   const redis = getRedis();
   if (!redis) return null;
-<<<<<<< HEAD
-
-=======
   
->>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(5, "60 s"),
