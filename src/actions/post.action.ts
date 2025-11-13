@@ -141,6 +141,16 @@ export async function getPosts() {
                 name: true,
               },
             },
+            likes: {
+              select: {
+                userId: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: true,
+              },
+            },
           },
           orderBy: {
             createdAt: "asc",
@@ -281,7 +291,7 @@ export async function toggleLike(postId: string) {
 /**
  * Créer un commentaire avec rate limiting
  */
-export async function createComment(postId: string, content: string) {
+export async function createComment(postId: string, content: string, image?: string) {
   try {
     // Validation Zod inline pour les commentaires
     const CreateCommentSchema = z.object({
@@ -291,9 +301,10 @@ export async function createComment(postId: string, content: string) {
         .max(300, "Le commentaire ne peut pas dépasser 300 caractères")
         .trim(),
       postId: z.string().cuid("ID de post invalide"),
+      image: z.string().url("URL d'image invalide").optional(),
     });
 
-    const validatedData = CreateCommentSchema.parse({ content, postId });
+    const validatedData = CreateCommentSchema.parse({ content, postId, image });
 
 // Étape 2: Récupérer l'utilisateur
     const userId = await getDbUserId();
@@ -345,8 +356,20 @@ export async function createComment(postId: string, content: string) {
       const newComment = await tx.comment.create({
         data: {
           content: validatedData.content,
+          image: validatedData.image,
           authorId: userId,
           postId: validatedData.postId,
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              clerkId: true,
+              username: true,
+              image: true,
+              name: true,
+            },
+          },
         },
       });
 
@@ -506,6 +529,16 @@ export async function getPostById(postId: string) {
                 username: true,
                 image: true,
                 name: true,
+              },
+            },
+            likes: {
+              select: {
+                userId: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: true,
               },
             },
           },
@@ -781,5 +814,91 @@ export async function updatePost(postId: string, content: string) {
     });
 
     return { success: false, error: "Erreur lors de la mise à jour du post" };
+  }
+}
+
+/**
+ * Liker ou retirer un like d'un commentaire
+ */
+export async function toggleCommentLike(commentId: string) {
+  try {
+    const userId = await getDbUserId();
+    if (!userId) {
+      logger.warn({
+        context: "toggleCommentLike",
+        action: "Unauthorized attempt",
+        details: { commentId },
+      });
+      return { success: false, error: "Non autorisé" };
+    }
+
+    // Vérifier si le like existe déjà
+    const existingLike = await prisma.commentLike.findUnique({
+      where: {
+        userId_commentId: {
+          userId,
+          commentId,
+        },
+      },
+    });
+
+    // Récupérer le commentaire et son auteur
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { authorId: true, postId: true },
+    });
+
+    if (!comment) {
+      logger.warn({
+        context: "toggleCommentLike",
+        action: "Comment not found",
+        details: { commentId },
+      });
+      throw new Error("Commentaire introuvable");
+    }
+
+    if (existingLike) {
+      // Retirer le like
+      await prisma.commentLike.delete({
+        where: {
+          userId_commentId: {
+            userId,
+            commentId,
+          },
+        },
+      });
+
+      logger.info({
+        context: "toggleCommentLike",
+        action: "Like removed",
+        details: { commentId, userId },
+      });
+    } else {
+      // Ajouter un like
+      await prisma.commentLike.create({
+        data: {
+          userId,
+          commentId,
+        },
+      });
+
+      logger.info({
+        context: "toggleCommentLike",
+        action: "Like added",
+        details: { commentId, userId, authorId: comment.authorId },
+      });
+    }
+
+    revalidatePath(`/post/${comment.postId}`);
+    return { success: true };
+  } catch (error) {
+    logger.error({
+      context: "toggleCommentLike",
+      action: "Failed to toggle comment like",
+      error,
+      details: { commentId },
+    });
+
+    return { success: false, error: "Impossible de liker le commentaire" };
   }
 }

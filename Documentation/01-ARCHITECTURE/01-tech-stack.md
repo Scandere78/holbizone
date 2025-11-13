@@ -1,5 +1,18 @@
 # Stack Technique - HolbiHub
 
+## 🎯 Philosophie du Choix Technologique
+
+**HolbiHub** utilise une stack technique moderne et éprouvée, choisie pour plusieurs raisons :
+- **Maîtrise personnelle** : Technologies utilisées régulièrement dans mes projets
+- **Productivité** : Développement rapide et efficace grâce à l'expertise acquise
+- **Meilleures pratiques** : Application des standards de l'industrie
+- **Maintenabilité** : Code propre et évolutif
+- **Performance** : Optimisations natives et outils performants
+
+C'est mon **écosystème de développement de prédilection**.
+
+---
+
 ## 🚀 Technologies Utilisées
 
 ### Frontend
@@ -18,14 +31,15 @@
 - ✅ Optimisations automatiques
 - ✅ Routing file-based
 - ✅ SSR + SSG natif
+- ✅ Excellente intégration avec Vercel
 
 #### Styling & UI
 | Technologie | Version | Description |
 |-------------|---------|-------------|
 | **Tailwind CSS** | 3.4.1 | Framework CSS utility-first |
 | **Shadcn/UI** | Latest | Composants React (Radix UI) |
-| **Lucide React** | 0.545.0 | Icônes |
-| **next-themes** | 0.4.6 | Dark mode |
+| **Lucide React** | 0.545.0 | Icônes modernes |
+| **next-themes** | 0.4.6 | Dark mode / Light mode |
 
 **Stack UI**:
 ```
@@ -42,6 +56,7 @@ Custom Components → Business logic
 | **React useState** | État local des composants |
 | **React useEffect** | Side effects |
 | **Server State** | Via Server Components & Actions |
+| **use-debounce** | 10.0.6 | Debounce pour recherche |
 
 **Pas de bibliothèque de state management** (Redux, Zustand) car :
 - Server Components gèrent la majorité de l'état
@@ -49,20 +64,18 @@ Custom Components → Business logic
 - Server Actions pour la synchronisation
 
 #### Formulaires & Validation
-| Technologie | Status | Notes |
-|-------------|--------|-------|
-| **React Hook Form** | ❌ Non utilisé | À implémenter |
-| **Zod** | ❌ Non utilisé | Recommandé pour validation |
+| Technologie | Version | Status |
+|-------------|---------|--------|
+| **Zod** | 4.1.12 | ✅ Implémenté |
 
-**À implémenter**:
+**Schémas de validation implémentés**:
 ```typescript
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-
-const schema = z.object({
-  content: z.string().max(500),
-});
+// src/lib/validations/
+├── comment.validation.ts
+├── user.validation.ts
+├── post.validation.ts
+├── message.validation.ts
+└── image.ts
 ```
 
 ### Backend
@@ -143,6 +156,44 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { UploadButton, UploadDropzone } from "@uploadthing/react";
 ```
 
+### Temps Réel & Cache
+
+| Technologie | Version | Description |
+|-------------|---------|-------------|
+| **Pusher** | 5.2.0 | Messagerie en temps réel |
+| **pusher-js** | 8.4.0 | Client Pusher pour le navigateur |
+| **Upstash Redis** | 1.35.6 | Base de données Redis serverless |
+| **Upstash Rate Limit** | 2.0.6 | Rate limiting avec Redis |
+
+**Fonctionnalités temps réel**:
+- Messages instantanés
+- Notifications en temps réel
+- Badge de comptage des messages non lus
+- Synchronisation multi-utilisateurs
+
+**Rate Limiting**:
+```typescript
+// Protection contre les abus
+- Par utilisateur authentifié
+- Par adresse IP
+- Limites configurables par action
+```
+
+### Sécurité
+
+| Technologie | Version | Description |
+|-------------|---------|-------------|
+| **isomorphic-dompurify** | 2.30.1 | Sanitization HTML (XSS protection) |
+| **react-error-boundary** | 6.0.0 | Gestion des erreurs React |
+
+**Mesures de sécurité**:
+- ✅ Sanitization du contenu utilisateur
+- ✅ Rate limiting par utilisateur et IP
+- ✅ Validation stricte avec Zod
+- ✅ Protection CSRF
+- ✅ Error boundaries globaux
+- ✅ Permissions strictes sur les actions
+
 ### Utilities & Helpers
 
 | Technologie | Version | Usage |
@@ -151,6 +202,7 @@ import { UploadButton, UploadDropzone } from "@uploadthing/react";
 | **tailwind-merge** | 3.3.1 | Merge Tailwind classes |
 | **date-fns** | 4.1.0 | Manipulation de dates |
 | **react-hot-toast** | 2.6.0 | Notifications toast |
+| **sonner** | 2.0.7 | Toast notifications élégants |
 
 **Exemple date-fns**:
 ```typescript

@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { createComment } from '@/actions/post.action';
 import CommentCard from '@/components/CommentCard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/error-message';
-import { MessageCircle, Loader2 } from 'lucide-react';
+import { MessageCircle, Loader2, ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
+import CommentImageUpload from '@/components/CommentImageUpload';
 
 interface CommentListProps {
   postId: string;
@@ -18,8 +20,11 @@ interface CommentListProps {
 
 export default function CommentList({ postId, comments: initialComments }: CommentListProps) {
   const { user } = useUser();
+  const router = useRouter();
   const [comments, setComments] = useState(initialComments);
   const [newComment, setNewComment] = useState('');
+  const [commentImage, setCommentImage] = useState('');
+  const [showImageUpload, setShowImageUpload] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
@@ -42,16 +47,33 @@ export default function CommentList({ postId, comments: initialComments }: Comme
 
     try {
       setIsLoading(true);
-      const result = await createComment(postId, newComment.trim());
+      const result = await createComment(postId, newComment.trim(), commentImage || undefined);
 
-      if (result.success) {
+      if (result.success && result.comment) {
         toast.success('Commentaire ajouté !');
         setNewComment('');
-        window.location.reload();
+        setCommentImage('');
+        setShowImageUpload(false);
+
+        // Ajouter le nouveau commentaire à la liste locale de manière optimiste
+        const newCommentData = {
+          ...result.comment,
+          author: {
+            id: user.id,
+            username: user.username || 'user',
+            image: user.imageUrl || null,
+            name: user.fullName || user.username || 'Utilisateur',
+          },
+        };
+        setComments([...comments, newCommentData]);
+
+        // Rafraîchir la page pour obtenir les données à jour
+        router.refresh();
       } else {
         toast.error(result.error || 'Erreur lors de l\'ajout du commentaire');
       }
     } catch (error) {
+      console.error('Error submitting comment:', error);
       toast.error('Erreur lors de l\'ajout du commentaire');
     } finally {
       setIsLoading(false);
@@ -77,10 +99,37 @@ export default function CommentList({ postId, comments: initialComments }: Comme
               maxLength={500}
               disabled={isLoading}
             />
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">
-                {newComment.length} / 500 caractères
-              </span>
+
+            {/* Image upload section */}
+            {(showImageUpload || commentImage) && (
+              <div className="border rounded-lg p-4 border-red-200 dark:border-red-800">
+                <CommentImageUpload
+                  value={commentImage}
+                  onChange={(url) => {
+                    setCommentImage(url);
+                    if (!url) setShowImageUpload(false);
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="flex justify-between items-center gap-3">
+              <div className="flex items-center gap-3 flex-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-red-600"
+                  onClick={() => setShowImageUpload(!showImageUpload)}
+                  disabled={isLoading}
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Photo
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {newComment.length} / 500 caractères
+                </span>
+              </div>
               <Button
                 type="submit"
                 disabled={isLoading || !newComment.trim()}

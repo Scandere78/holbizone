@@ -29,19 +29,30 @@ function ImageUpload({ endpoint, onChange, value }: ImageUploadProps) {
       endpoint={endpoint}
       onClientUploadComplete={(res) => {
         console.log("Upload terminé:", res);
+        console.log("Réponse complète:", JSON.stringify(res, null, 2));
         if (res && res[0]) {
           // Try multiple possible URL locations
           const imageUrl = res[0].url || res[0].appUrl || res[0].serverData?.fileUrl;
-          console.log("URL de l'image:", imageUrl);
+          console.log("URL de l'image extraite:", imageUrl);
+          console.log("res[0].url:", res[0].url);
+          console.log("res[0].appUrl:", res[0].appUrl);
+          console.log("res[0].serverData:", res[0].serverData);
+
           if (imageUrl) {
+            console.log("Appel de onChange avec:", imageUrl);
             onChange(imageUrl);
           } else {
-            console.error("No URL found in response:", res[0]);
+            console.error("Aucune URL trouvée dans la réponse:", res[0]);
+            console.error("Clés disponibles:", Object.keys(res[0]));
           }
+        } else {
+          console.error("Pas de résultat dans res[0]");
         }
       }}
       onUploadError={(error: Error) => {
         console.error("Erreur d'upload:", error);
+        console.error("Message d'erreur:", error.message);
+        console.error("Stack:", error.stack);
       }}
       className="ut-button:bg-red-600 ut-button:ut-readying:bg-red-500/50 ut-label:text-sm ut-allowed-content:text-xs ut-allowed-content:text-muted-foreground ut-upload-icon:w-8 ut-upload-icon:h-8"
       appearance={{

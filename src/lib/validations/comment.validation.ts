@@ -7,6 +7,7 @@ export const CreateCommentSchema = z.object({
     .max(300, "Le commentaire ne peut pas dépasser 300 caractères")
     .trim(),
   postId: z.string().cuid("ID de post invalide"),
+  image: z.string().url("URL d'image invalide").optional(),
 });
 
 export const EditCommentSchema = z.object({

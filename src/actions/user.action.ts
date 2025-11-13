@@ -156,9 +156,13 @@ export async function toggleFollow(targetUserId: string) {
   try {
     const userId = await getDbUserId();
 
-    if (!userId) return;
+    if (!userId) {
+      return { success: false, error: "Non autorisé" };
+    }
 
-    if (userId === targetUserId) throw new Error("You cannot follow yourself");
+    if (userId === targetUserId) {
+      return { success: false, error: "Vous ne pouvez pas vous suivre vous-même" };
+    }
 
     const existingFollow = await prisma.follows.findUnique({
       where: {

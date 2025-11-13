@@ -27,10 +27,11 @@ model User {
   updatedAt DateTime @updatedAt
   bookmarks Bookmark[] @relation("UserBookmarks")
 
-  // Relations: 
+  // Relations:
   posts Post[] // One-to-many
   comments Comment[] // One-to-many
   likes Like[] // One-to-many
+  commentLikes CommentLike[] // One-to-many
 
   followers Follows[] @relation("following") // users who follow this user
   following Follows[] @relation("follower") // users this user follows
@@ -150,6 +151,7 @@ model Block {
 model Comment{
   id String @id @default(cuid())
   content String
+  image String?
   authorId String
   postId String
   createdAt DateTime @default(now())
@@ -159,14 +161,15 @@ model Comment{
   author User @relation(fields: [authorId],references: [id],onDelete: Cascade)
   post Post @relation(fields: [postId],references: [id], onDelete: Cascade)
   notifications Notification[]
+  likes CommentLike[]
 
   @@index([authorId,postId]) // composite index for faster queries
 }
 
 model Like {
   id        String   @id @default(cuid())
-  postId    String                 
-  userId    String                 
+  postId    String
+  userId    String
   createdAt DateTime @default(now())
 
   // Relations
@@ -175,6 +178,20 @@ model Like {
 
   @@index([userId,postId]) // composite index for faster queries
   @@unique([userId,postId]) // this prevents same user liking post twice
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, commentId]) // composite index for faster queries
+  @@unique([userId, commentId]) // this prevents same user liking comment twice
 }
 
 model Follows{

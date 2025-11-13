@@ -19,17 +19,17 @@ export default function MobileSignInBar() {
         </p>
 
         <div className="flex flex-col gap-3 w-full max-w-sm">
-          <SignInButton mode="modal">
-            <Button 
+          <SignInButton mode="modal" fallbackRedirectUrl="/">
+            <Button
               size="lg"
               className="w-full bg-white text-red-600 hover:bg-gray-100 font-semibold shadow-lg"
             >
               Se connecter
             </Button>
           </SignInButton>
-          
-          <SignInButton mode="modal">
-            <Button 
+
+          <SignInButton mode="modal" fallbackRedirectUrl="/">
+            <Button
               size="lg"
               variant="outline"
               className="w-full border-2 border-white text-white hover:bg-white/10 font-semibold"

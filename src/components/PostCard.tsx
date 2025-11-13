@@ -75,8 +75,16 @@ export default function PostCard({
   // ✅ Vérifier si le post est liké au chargement
   useEffect(() => {
     const checkLike = async () => {
-      if (post.likes && Array.isArray(post.likes)) {
-        const liked = post.likes.some((like: any) => like.userId === clerkUser?.id);
+      if (!clerkUser?.id || !post.likes || !Array.isArray(post.likes)) {
+        return;
+      }
+
+      // Importer getUserByClerkId pour obtenir l'ID de la DB
+      const { getUserByClerkId } = await import('@/actions/user.action');
+      const currentDbUser = await getUserByClerkId(clerkUser.id);
+
+      if (currentDbUser) {
+        const liked = post.likes.some((like: any) => like.userId === currentDbUser.id);
         setIsLiked(liked);
       }
     };
@@ -113,9 +121,15 @@ export default function PostCard({
 
   // ✅ Handler Like
   const handleLike = async () => {
+    // Prevent multiple clicks while loading
+    if (isLoadingLike) return;
+
     try {
       setIsLoadingLike(true);
       const newLikedState = !isLiked;
+      const previousLikeCount = likeCount;
+
+      // Optimistic update
       setIsLiked(newLikedState);
       setLikeCount(newLikedState ? likeCount + 1 : likeCount - 1);
 
@@ -128,13 +142,14 @@ export default function PostCard({
       } else {
         // Revert state on error
         setIsLiked(!newLikedState);
-        setLikeCount(newLikedState ? likeCount - 1 : likeCount + 1);
+        setLikeCount(previousLikeCount);
         toast.error(result.error || 'Erreur');
       }
     } catch (error) {
       // Revert state on error
-      setIsLiked(!isLiked);
-      setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
+      const previousState = !isLiked;
+      setIsLiked(previousState);
+      setLikeCount(previousState ? likeCount - 1 : likeCount + 1);
       toast.error('Erreur lors du like');
     } finally {
       setIsLoadingLike(false);

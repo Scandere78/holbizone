@@ -105,9 +105,9 @@ function DesktopNavbar({ user, unreadMessages, unreadNotifications }: DesktopNav
           />
         </>
       ) : (
-        <SignInButton mode="modal">
-          <Button 
-            variant="default" 
+        <SignInButton mode="modal" fallbackRedirectUrl="/">
+          <Button
+            variant="default"
             className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
           >
             Sign In

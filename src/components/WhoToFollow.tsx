@@ -1,15 +1,29 @@
-import { getRandomUsers } from "@/actions/user.action";
+import { getRandomUsers, getDbUserId } from "@/actions/user.action";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import Link from "next/link";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import FollowButton from "./FollowButton";
 import { Users, Sparkles } from "lucide-react";
 import { Separator } from "./ui/separator";
+import prisma from "@/lib/prisma";
 
 async function WhoToFollow() {
   const users = await getRandomUsers();
 
   if (!users || users.length === 0) return null;
+
+  // Récupérer l'utilisateur actuel
+  const currentUserId = await getDbUserId();
+
+  // Si l'utilisateur est connecté, vérifier qui il suit déjà
+  let followedUserIds: string[] = [];
+  if (currentUserId) {
+    const follows = await prisma.follows.findMany({
+      where: { followerId: currentUserId },
+      select: { followingId: true },
+    });
+    followedUserIds = follows.map(f => f.followingId);
+  }
 
   return (
     <div className="sticky top-20">
@@ -54,7 +68,10 @@ async function WhoToFollow() {
                     </div>
                   </div>
                   
-                  <FollowButton targetUserId={user.id} isFollowing={false} />
+                  <FollowButton
+                    targetUserId={user.id}
+                    isFollowing={followedUserIds.includes(user.id)}
+                  />
                 </div>
                 {index < users.length - 1 && <Separator className="my-2" />}
               </div>

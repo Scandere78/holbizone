@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,12 +10,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { MoreVertical, Edit2, Trash2, Heart } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import toast from 'react-hot-toast';
-import { deleteComment } from '@/actions/post.action';
+import { deleteComment, toggleCommentLike } from '@/actions/post.action';
 import EditCommentDialog from './EditCommentDialog';
 import { OptimizedAvatar } from '@/components/ui/optimized-image';
+import Image from 'next/image';
 
 /**
  * Carte de commentaire avec options d'édition/suppression
@@ -34,8 +35,71 @@ export default function CommentCard({
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // États pour les likes
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(comment._count?.likes || 0);
+  const [isLoadingLike, setIsLoadingLike] = useState(false);
+
   // ✅ Vérifier si l'utilisateur est l'auteur
   const isAuthor = clerkUser?.id === comment.author.clerkId;
+
+  // ✅ Vérifier si le commentaire est liké au chargement
+  useEffect(() => {
+    const checkLike = async () => {
+      if (!clerkUser?.id || !comment.likes || !Array.isArray(comment.likes)) {
+        return;
+      }
+
+      // Importer getUserByClerkId pour obtenir l'ID de la DB
+      const { getUserByClerkId } = await import('@/actions/user.action');
+      const currentDbUser = await getUserByClerkId(clerkUser.id);
+
+      if (currentDbUser) {
+        const liked = comment.likes.some((like: any) => like.userId === currentDbUser.id);
+        setIsLiked(liked);
+      }
+    };
+    checkLike();
+  }, [comment.likes, clerkUser?.id]);
+
+  /**
+   * Gérer le like
+   */
+  const handleLike = async () => {
+    // Prevent multiple clicks while loading
+    if (isLoadingLike) return;
+
+    try {
+      setIsLoadingLike(true);
+      const newLikedState = !isLiked;
+      const previousLikeCount = likeCount;
+
+      // Optimistic update
+      setIsLiked(newLikedState);
+      setLikeCount(newLikedState ? likeCount + 1 : likeCount - 1);
+
+      const result = await toggleCommentLike(comment.id);
+
+      if (result.success) {
+        toast.success(
+          newLikedState ? '❤️ Commentaire aimé!' : 'Like retiré'
+        );
+      } else {
+        // Revert state on error
+        setIsLiked(!newLikedState);
+        setLikeCount(previousLikeCount);
+        toast.error(result.error || 'Erreur');
+      }
+    } catch (error) {
+      // Revert state on error
+      const previousState = !isLiked;
+      setIsLiked(previousState);
+      setLikeCount(previousState ? likeCount - 1 : likeCount + 1);
+      toast.error('Erreur lors du like');
+    } finally {
+      setIsLoadingLike(false);
+    }
+  };
 
   /**
    * Gérer la suppression
@@ -123,6 +187,39 @@ export default function CommentCard({
 
           {/* Contenu du commentaire */}
           <p className="text-sm mt-2">{comment.content}</p>
+
+          {/* Image du commentaire */}
+          {comment.image && (
+            <div className="mt-3 rounded-lg overflow-hidden border border-red-200 dark:border-red-800">
+              <div className="relative w-full max-w-md h-64">
+                <Image
+                  src={comment.image}
+                  alt="Image du commentaire"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 500px"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Bouton de like */}
+          <div className="mt-2">
+            <button
+              onClick={handleLike}
+              disabled={isLoadingLike}
+              className={`flex items-center gap-1 text-xs transition-colors ${
+                isLiked
+                  ? 'text-red-600'
+                  : 'text-gray-500 hover:text-red-600'
+              }`}
+            >
+              <Heart
+                className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`}
+              />
+              <span>{likeCount > 0 && likeCount}</span>
+            </button>
+          </div>
         </div>
       </div>
 
