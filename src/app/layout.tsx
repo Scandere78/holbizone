@@ -48,7 +48,7 @@ export default async function RootLayout({
   try {
     // Récupérer l'utilisateur Clerk
     const clerkUser = await currentUser();
-    
+
     logger.info({
       context: "RootLayout",
       action: "Initializing layout",
@@ -58,7 +58,7 @@ export default async function RootLayout({
     // Fetch badge counts et sync user en parallèle
     let unreadMessages = 0;
     let unreadNotifications = 0;
-    
+
     if (clerkUser) {
       try {
         [unreadMessages, unreadNotifications] = await Promise.all([
