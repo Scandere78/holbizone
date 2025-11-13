@@ -10,150 +10,215 @@ import { logger } from "./logger";
  */
 
 // ============================================
-// SAFE REDIS INITIALIZATION
+// SAFE REDIS INITIALIZATION (LAZY)
 // ============================================
 
 let redisInstance: Redis | null = null;
+let redisInitialized = false;
 
 function getRedis(): Redis | null {
-  if (redisInstance) {
+  // Skip during build time
+  if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && !process.env.UPSTASH_REDIS_REST_URL) {
+    return null;
+  }
+
+  if (redisInitialized) {
     return redisInstance;
   }
-  
+
   try {
     // Vérifier les variables d'environnement
     if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+      redisInitialized = true;
       return null;
     }
-    
+
     redisInstance = Redis.fromEnv();
+    redisInitialized = true;
     return redisInstance;
   } catch (error) {
     // Silencieux - ne pas bloquer le build
+    redisInitialized = true;
     return null;
   }
 }
 
 // ============================================
-// DIFFÉRENTES STRATÉGIES DE RATE LIMITING
+// LAZY RATE LIMITERS (NOT INITIALIZED AT IMPORT TIME)
 // ============================================
+
+let postRateLimitInstance: Ratelimit | null | undefined = undefined;
+let messageRateLimitInstance: Ratelimit | null | undefined = undefined;
+let commentRateLimitInstance: Ratelimit | null | undefined = undefined;
+let likeRateLimitInstance: Ratelimit | null | undefined = undefined;
+let uploadRateLimitInstance: Ratelimit | null | undefined = undefined;
 
 /**
  * Rate limit pour les POSTS
  */
-function createPostRateLimit() {
+function getPostRateLimit(): Ratelimit | null {
+  if (postRateLimitInstance !== undefined) {
+    return postRateLimitInstance;
+  }
+
   try {
     const redis = getRedis();
-    if (!redis) return null;
+    if (!redis) {
+      postRateLimitInstance = null;
+      return null;
+    }
 
-    return new Ratelimit({
+    postRateLimitInstance = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(10, "10 s"),
       analytics: true,
       prefix: "ratelimit:post",
     });
+    return postRateLimitInstance;
   } catch {
+    postRateLimitInstance = null;
     return null;
   }
 }
 
-export const postRateLimit = createPostRateLimit();
+export const postRateLimit = { get: getPostRateLimit };
 
 /**
  * Rate limit pour les MESSAGES
  */
-function createMessageRateLimit() {
+function getMessageRateLimit(): Ratelimit | null {
+  if (messageRateLimitInstance !== undefined) {
+    return messageRateLimitInstance;
+  }
+
   try {
     const redis = getRedis();
-    if (!redis) return null;
+    if (!redis) {
+      messageRateLimitInstance = null;
+      return null;
+    }
 
-    return new Ratelimit({
+    messageRateLimitInstance = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(20, "10 s"),
       analytics: true,
       prefix: "ratelimit:message",
     });
+    return messageRateLimitInstance;
   } catch {
+    messageRateLimitInstance = null;
     return null;
   }
 }
 
-export const messageRateLimit = createMessageRateLimit();
+export const messageRateLimit = { get: getMessageRateLimit };
 
 /**
  * Rate limit pour les COMMENTAIRES
  */
-function createCommentRateLimit() {
+function getCommentRateLimit(): Ratelimit | null {
+  if (commentRateLimitInstance !== undefined) {
+    return commentRateLimitInstance;
+  }
+
   try {
     const redis = getRedis();
-    if (!redis) return null;
+    if (!redis) {
+      commentRateLimitInstance = null;
+      return null;
+    }
 
-    return new Ratelimit({
+    commentRateLimitInstance = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(15, "10 s"),
       analytics: true,
       prefix: "ratelimit:comment",
     });
+    return commentRateLimitInstance;
   } catch {
+    commentRateLimitInstance = null;
     return null;
   }
 }
 
-export const commentRateLimit = createCommentRateLimit();
+export const commentRateLimit = { get: getCommentRateLimit };
 
 /**
  * Rate limit pour les LIKES
  */
-function createLikeRateLimit() {
+function getLikeRateLimit(): Ratelimit | null {
+  if (likeRateLimitInstance !== undefined) {
+    return likeRateLimitInstance;
+  }
+
   try {
     const redis = getRedis();
-    if (!redis) return null;
+    if (!redis) {
+      likeRateLimitInstance = null;
+      return null;
+    }
 
-    return new Ratelimit({
+    likeRateLimitInstance = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(50, "10 s"),
       analytics: true,
       prefix: "ratelimit:like",
     });
+    return likeRateLimitInstance;
   } catch {
+    likeRateLimitInstance = null;
     return null;
   }
 }
 
-export const likeRateLimit = createLikeRateLimit();
+export const likeRateLimit = { get: getLikeRateLimit };
 
 /**
  * Rate limit pour les UPLOADS D'IMAGES
  */
-function createUploadRateLimit() {
+function getUploadRateLimit(): Ratelimit | null {
+  if (uploadRateLimitInstance !== undefined) {
+    return uploadRateLimitInstance;
+  }
+
   try {
     const redis = getRedis();
-    if (!redis) return null;
+    if (!redis) {
+      uploadRateLimitInstance = null;
+      return null;
+    }
 
-    return new Ratelimit({
+    uploadRateLimitInstance = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(5, "60 s"),
       analytics: true,
       prefix: "ratelimit:upload",
     });
+    return uploadRateLimitInstance;
   } catch {
+    uploadRateLimitInstance = null;
     return null;
   }
 }
 
-export const uploadRateLimit = createUploadRateLimit();
+export const uploadRateLimit = { get: getUploadRateLimit };
 
 /**
  * Fonction générique pour appliquer le rate limit
  * Retourne { success, remaining, resetAfter }
  */
 export async function checkRateLimit(
-  limiter: Ratelimit | null,
+  limiter: { get: () => Ratelimit | null } | Ratelimit | null,
   identifier: string,
   context: string
 ): Promise<{ success: boolean; remaining: number; resetAfter: number }> {
+  // Obtenir l'instance réelle du limiter
+  const actualLimiter = limiter && typeof limiter === 'object' && 'get' in limiter
+    ? limiter.get()
+    : limiter;
+
   // Si le limiter est null, laisser passer
-  if (!limiter) {
+  if (!actualLimiter) {
     return {
       success: true,
       remaining: -1,
@@ -162,7 +227,7 @@ export async function checkRateLimit(
   }
 
   try {
-    const result = await limiter.limit(identifier);
+    const result = await actualLimiter.limit(identifier);
 
     // Calculer le temps d'attente avant reset (en millisecondes)
     // result.reset est un timestamp en ms, on calcule la différence avec now
