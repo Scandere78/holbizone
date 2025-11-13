@@ -12,7 +12,11 @@ import { logger } from "./logger";
 
 // ✅ Vérifier que les variables d'environnement sont présentes
 export const hasRedisConfig = !!(
+<<<<<<< HEAD
   process.env.UPSTASH_REDIS_REST_URL &&
+=======
+  process.env.UPSTASH_REDIS_REST_URL && 
+>>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   process.env.UPSTASH_REDIS_REST_TOKEN
 );
 
@@ -26,7 +30,11 @@ function getRedis(): Redis | null {
   if (!hasRedisConfig) {
     return null;
   }
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   if (!redisInstance) {
     try {
       redisInstance = Redis.fromEnv();
@@ -39,7 +47,11 @@ function getRedis(): Redis | null {
       return null;
     }
   }
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return redisInstance;
 }
 
@@ -55,7 +67,11 @@ function getRedis(): Redis | null {
 function createPostRateLimit() {
   const redis = getRedis();
   if (!redis) return null;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(10, "10 s"),
@@ -74,7 +90,11 @@ export const postRateLimit = createPostRateLimit();
 function createMessageRateLimit() {
   const redis = getRedis();
   if (!redis) return null;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(20, "10 s"),
@@ -93,7 +113,11 @@ export const messageRateLimit = createMessageRateLimit();
 function createCommentRateLimit() {
   const redis = getRedis();
   if (!redis) return null;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(15, "10 s"),
@@ -112,7 +136,11 @@ export const commentRateLimit = createCommentRateLimit();
 function createLikeRateLimit() {
   const redis = getRedis();
   if (!redis) return null;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(50, "10 s"),
@@ -131,7 +159,11 @@ export const likeRateLimit = createLikeRateLimit();
 function createUploadRateLimit() {
   const redis = getRedis();
   if (!redis) return null;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 7fd0fc60e7a25626de1833ce6889a81571d09796
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(5, "60 s"),
