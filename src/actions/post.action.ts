@@ -1,15 +1,12 @@
 "use server";
 
-import prisma from "@/lib/prisma";
-import { getDbUserId } from "./user.action";
-import { revalidatePath } from "next/cache";
-import { CreatePostSchema } from "@/lib/validations/post.validation";
-import { z } from "zod";
 import { logger } from "@/lib/logger";
-import { postRateLimit, checkRateLimit } from "@/lib/rate-limit";
-import { commentRateLimit  } from "@/lib/rate-limit";
-import { currentUser } from "@clerk/nextjs/server";
-import { getUserByClerkId } from "./user.action";
+import prisma from "@/lib/prisma";
+import { checkRateLimit, commentRateLimit, postRateLimit } from "@/lib/rate-limit";
+import { CreatePostSchema } from "@/lib/validations/post.validation";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { getDbUserId } from "./user.action";
 
 
 /**

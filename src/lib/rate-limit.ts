@@ -5,11 +5,11 @@ import { logger } from "./logger";
 
 /**
  * Configuration du Rate Limiting avec Upstash Redis
- * 
+ *
  * Utilise Redis.fromEnv() pour récupérer automatiquement:
  * - UPSTASH_REDIS_REST_URL
  * - UPSTASH_REDIS_REST_TOKEN
- * 
+ *
  * À partir du fichier .env
  */
 
@@ -17,8 +17,8 @@ import { logger } from "./logger";
 const hasRedisConfig = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 
 // Créer un mock Redis si les variables ne sont pas présentes (pour le build)
-const redis: Redis = hasRedisConfig 
-  ? Redis.fromEnv() 
+const redis: Redis = hasRedisConfig
+  ? Redis.fromEnv()
   : ({
       set: async () => "OK",
       get: async () => null,
@@ -92,7 +92,7 @@ export const uploadRateLimit = new Ratelimit({
 /**
  * Fonction générique pour appliquer le rate limit
  * Retourne { success, remaining, resetAfter }
- * 
+ *
  * @param limiter - L'instance de Ratelimit
  * @param identifier - ID unique (userId, IP, etc.)
  * @param context - Contexte pour le logging
