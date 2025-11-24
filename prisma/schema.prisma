@@ -46,6 +46,9 @@ model User {
   // Blocking
   blockedBy Block[] @relation("BlockedBy") // users who blocked me
   blocking Block[] @relation("Blocking") // users I blocked
+
+  // Reclamations
+  reclamations Reclamation[]
 }
 
 model Conversation {
@@ -227,8 +230,46 @@ model Notification {
 }
 
 enum NotificationType {
-  LIKE     
-  COMMENT 
-  FOLLOW   
+  LIKE
+  COMMENT
+  FOLLOW
+}
+
+model Reclamation {
+  id          String   @id @default(cuid())
+  type        ReclamationType
+  title       String
+  description String   @db.Text
+  priority    ReclamationPriority @default(MEDIUM)
+  status      ReclamationStatus   @default(PENDING)
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum ReclamationType {
+  BUG
+  FEATURE
+  IMPROVEMENT
+  OTHER
+}
+
+enum ReclamationPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ReclamationStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
 }
 

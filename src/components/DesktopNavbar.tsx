@@ -18,9 +18,9 @@ function DesktopNavbar({ user, unreadMessages, unreadNotifications }: DesktopNav
     <div className="hidden md:flex items-center space-x-4">
       <ModeToggle />
 
-      <Button 
-        variant="ghost" 
-        className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors" 
+      <Button
+        variant="ghost"
+        className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
         asChild
       >
         <Link href="/">
@@ -31,9 +31,9 @@ function DesktopNavbar({ user, unreadMessages, unreadNotifications }: DesktopNav
 
       {user ? (
         <>
-          <Button 
-            variant="ghost" 
-            className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors" 
+          <Button
+            variant="ghost"
+            className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
             asChild
           >
             <Link href="/explorer">
@@ -42,9 +42,9 @@ function DesktopNavbar({ user, unreadMessages, unreadNotifications }: DesktopNav
             </Link>
           </Button>
 
-          <Button 
-            variant="ghost" 
-            className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors relative" 
+          <Button
+            variant="ghost"
+            className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors relative"
             asChild
           >
             <Link href="/messages">
@@ -61,17 +61,17 @@ function DesktopNavbar({ user, unreadMessages, unreadNotifications }: DesktopNav
             </Link>
           </Button>
 
-          <Button 
-            variant="ghost" 
-            className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors relative" 
+          <Button
+            variant="ghost"
+            className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors relative"
             asChild
           >
             <Link href="/notifications">
               <BellIcon className="w-5 h-5" />
               <span className="hidden lg:inline">Notifications</span>
               {unreadNotifications > 0 && (
-                <Badge 
-                  variant="destructive" 
+                <Badge
+                  variant="destructive"
                   className="absolute -top-1 -right-1 h-5 min-w-[20px] flex items-center justify-center p-1 text-xs font-bold bg-gradient-to-r from-red-600 to-orange-600 border-0 animate-pulse shadow-lg"
                 >
                   {unreadNotifications > 99 ? "99+" : unreadNotifications}
@@ -79,10 +79,21 @@ function DesktopNavbar({ user, unreadMessages, unreadNotifications }: DesktopNav
               )}
             </Link>
           </Button>
-          
-          <Button 
-            variant="ghost" 
-            className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors" 
+
+          <Button
+            variant="ghost"
+            className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+            asChild
+          >
+            <Link href="/reclamations">
+              <Users className="w-5 h-5" />
+              <span className="hidden lg:inline">Question</span>
+            </Link>
+          </Button>
+
+          <Button
+            variant="ghost"
+            className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
             asChild
           >
             <Link
@@ -94,8 +105,8 @@ function DesktopNavbar({ user, unreadMessages, unreadNotifications }: DesktopNav
               <span className="hidden lg:inline">Profile</span>
             </Link>
           </Button>
-          
-          <UserButton 
+
+          <UserButton
             afterSignOutUrl="/"
             appearance={{
               elements: {

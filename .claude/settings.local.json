@@ -21,7 +21,10 @@
       "Bash(tree:*)",
       "Bash(pnpm test:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(pnpm dev)",
+      "Bash(timeout 5 bash:*)",
+      "Bash(pnpm add:*)"
     ],
     "deny": [],
     "ask": []
