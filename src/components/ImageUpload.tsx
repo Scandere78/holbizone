@@ -39,13 +39,102 @@ function ImageUpload({ endpoint, onChange, value }: ImageUploadProps) {
     );
   }
 
+  // Fonction de compression d'image
+  const compressImage = async (file: File): Promise<File> => {
+    const maxSize = 4 * 1024 * 1024; // 4MB
+
+    // Si le fichier est déjà petit, pas de compression
+    if (file.size <= maxSize * 0.8) {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Réduire la taille si trop grande
+          const maxDimension = 2048;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = (height * maxDimension) / width;
+              width = maxDimension;
+            } else {
+              width = (width * maxDimension) / height;
+              height = maxDimension;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Compression progressive jusqu'à atteindre la taille cible
+          let quality = 0.9;
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                resolve(file);
+              }
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   return (
     <UploadDropzone
       endpoint={endpoint}
-      onBeforeUploadBegin={(files) => {
+      onBeforeUploadBegin={async (files) => {
         setIsUploading(true);
+        toast.loading("Préparation de l'image...", { id: "upload-image" });
+
+        // Compression des fichiers avant upload
+        const compressedFiles = await Promise.all(
+          files.map(async (file) => {
+            // Vérification de la taille
+            const maxSize = 4 * 1024 * 1024; // 4MB
+
+            if (file.size > maxSize) {
+              toast.dismiss("upload-image");
+              toast.loading("Compression en cours...", { id: "upload-image" });
+              const compressed = await compressImage(file);
+
+              // Vérifier après compression
+              if (compressed.size > maxSize) {
+                toast.dismiss("upload-image");
+                toast.error("Image trop volumineuse même après compression");
+                setIsUploading(false);
+                throw new Error("Fichier trop volumineux");
+              }
+
+              return compressed;
+            }
+
+            return file;
+          })
+        );
+
+        toast.dismiss("upload-image");
         toast.loading("Upload en cours...", { id: "upload-image" });
-        return files;
+        return compressedFiles;
       }}
       onClientUploadComplete={(res) => {
         setIsUploading(false);
@@ -84,7 +173,7 @@ function ImageUpload({ endpoint, onChange, value }: ImageUploadProps) {
       }}
       content={{
         label: () => "📸 Choisir une image",
-        allowedContent: () => "Image (4MB max)",
+        allowedContent: () => "Image (auto-compression si > 4MB)",
         button: ({ ready, isUploading }) => {
           if (isUploading) return "Upload en cours...";
           if (!ready) return "En préparation...";

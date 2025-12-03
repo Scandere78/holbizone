@@ -12,6 +12,62 @@ interface CommentImageUploadProps {
 function CommentImageUpload({ onChange, value }: CommentImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
 
+  // Fonction de compression d'image
+  const compressImage = async (file: File): Promise<File> => {
+    const maxSize = 4 * 1024 * 1024; // 4MB
+
+    if (file.size <= maxSize * 0.8) {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          const maxDimension = 2048;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = (height * maxDimension) / width;
+              width = maxDimension;
+            } else {
+              width = (width * maxDimension) / height;
+              height = maxDimension;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                resolve(file);
+              }
+            },
+            'image/jpeg',
+            0.9
+          );
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   if (value) {
     return (
       <div className="relative w-full max-w-sm">
@@ -44,8 +100,20 @@ function CommentImageUpload({ onChange, value }: CommentImageUploadProps) {
 
       <UploadDropzone
         endpoint="postImage"
-        onUploadBegin={() => {
+        onBeforeUploadBegin={async (files) => {
           setIsUploading(true);
+
+          const compressedFiles = await Promise.all(
+            files.map(async (file) => {
+              const maxSize = 4 * 1024 * 1024;
+              if (file.size > maxSize) {
+                return await compressImage(file);
+              }
+              return file;
+            })
+          );
+
+          return compressedFiles;
         }}
         onClientUploadComplete={(res) => {
           setIsUploading(false);
@@ -70,7 +138,7 @@ function CommentImageUpload({ onChange, value }: CommentImageUploadProps) {
         }}
         content={{
           label: () => "Ajouter une image au commentaire",
-          allowedContent: () => "Image (4MB max)",
+          allowedContent: () => "Image (auto-compression si > 4MB)",
           button: ({ ready, isUploading }) => {
             if (isUploading) return "Upload en cours...";
             if (ready) return "Choisir l'image";

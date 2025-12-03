@@ -190,14 +190,12 @@ export default function CommentCard({
 
           {/* Image du commentaire */}
           {comment.image && (
-            <div className="mt-3 rounded-lg overflow-hidden border border-red-200 dark:border-red-800">
-              <div className="relative w-full max-w-md h-64">
-                <Image
+            <div className="mt-3 rounded-lg overflow-hidden border border-red-200 dark:border-red-800 bg-gray-100 dark:bg-gray-800">
+              <div className="relative w-full max-w-md h-auto min-h-[200px] max-h-[500px]">
+                <img
                   src={comment.image}
                   alt="Image du commentaire"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 500px"
+                  className="w-full h-auto max-h-[500px] object-contain"
                 />
               </div>
             </div>

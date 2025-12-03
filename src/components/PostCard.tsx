@@ -341,11 +341,11 @@ export default function PostCard({
 
         {/* ===== IMAGE ===== */}
         {post.image && (
-          <div className="mb-4 rounded-lg overflow-hidden">
+          <div className="mb-4 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
             <img
               src={post.image}
               alt="Post image"
-              className="w-full h-auto max-h-96 object-cover hover:opacity-90 transition-opacity"
+              className="w-full h-auto max-h-[600px] object-contain hover:opacity-90 transition-opacity"
             />
           </div>
         )}

@@ -85,21 +85,9 @@ function DesktopNavbar({ user, unreadMessages, unreadNotifications }: DesktopNav
             className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
             asChild
           >
-            <Link href="/reclamations">
-              <Users className="w-5 h-5" />
-              <span className="hidden lg:inline">Question</span>
-            </Link>
-          </Button>
-
-          <Button
-            variant="ghost"
-            className="flex items-center gap-2 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-            asChild
-          >
             <Link
-              href={`/profile/${
-                user.username ?? user.emailAddresses[0]?.emailAddress.split("@")[0]
-              }`}
+              href={`/profile/${user.username ?? user.emailAddresses[0]?.emailAddress.split("@")[0]
+                }`}
             >
               <UserIcon className="w-5 h-5" />
               <span className="hidden lg:inline">Profile</span>
