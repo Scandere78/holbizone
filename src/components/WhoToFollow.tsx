@@ -53,10 +53,10 @@ async function WhoToFollow() {
                         </AvatarFallback>
                       </Avatar>
                     </Link>
-                    
+
                     <div className="text-sm min-w-0 flex-1">
-                      <Link 
-                        href={`/profile/${user.username}`} 
+                      <Link
+                        href={`/profile/${user.username}`}
                         className="font-semibold hover:text-red-600 dark:hover:text-red-400 transition-colors block truncate"
                       >
                         {user.name}
@@ -67,7 +67,7 @@ async function WhoToFollow() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <FollowButton
                     targetUserId={user.id}
                     isFollowing={followedUserIds.includes(user.id)}
@@ -80,8 +80,8 @@ async function WhoToFollow() {
 
           {/* Footer */}
           <div className="mt-4 pt-4 border-t border-red-100 dark:border-red-950/50">
-            <Link 
-              href="/explore" 
+            <Link
+              href="/explorer"
               className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium flex items-center justify-center gap-2 hover:underline transition-all"
             >
               Voir plus de suggestions

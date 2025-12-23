@@ -37,5 +37,7 @@ next-env.d.ts
 
 .env
 
+# Documentation technique (révision orale)
+/doc-technique
 
 /src/generated/prisma
