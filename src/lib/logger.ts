@@ -1,3 +1,5 @@
+// Logger centralisé : affiche niveau, contexte, action, détails et erreurs
+
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 interface LogContext {

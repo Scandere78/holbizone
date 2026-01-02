@@ -5,7 +5,19 @@ import {
   isFollowing,
 } from "@/actions/profile.action";
 import { notFound } from "next/navigation";
-import ProfilePageClient from "./ProfilePageClient";
+import dynamic from 'next/dynamic';
+
+const ProfilePageClient = dynamic(() => import('./ProfilePageClient'), {
+  ssr: false,
+  loading: () => (
+    <div className="max-w-3xl mx-auto">
+      <div className="animate-pulse space-y-4">
+        <div className="h-32 bg-gray-200 dark:bg-gray-800 rounded"></div>
+        <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded"></div>
+      </div>
+    </div>
+  ),
+});
 
 export async function generateMetadata({ params }: { params: { username: string } }) {
   const user = await getProfileByUsername(params.username);

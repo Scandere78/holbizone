@@ -4,10 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { OptimizedAvatar } from '@/components/ui/optimized-image';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import FollowButton from '@/components/FollowButton';
-import { Users, Search, X } from 'lucide-react';
+import { Users, Search, X, FileText, UserCheck, UserPlus } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 import { searchUsers } from '@/actions/search.action';
 
@@ -200,24 +199,33 @@ export default function UserSearchList({ initialUsers }: UserSearchListProps) {
                   )}
 
                   {/* Stats */}
-                  <div className="grid grid-cols-3 gap-2 p-3 bg-red-50/50 dark:bg-red-950/20 rounded-lg border border-red-100/50 dark:border-red-900/30">
+                  <div className="grid grid-cols-3 gap-6 p-4 bg-red-50/50 dark:bg-red-950/20 rounded-lg border border-red-100/50 dark:border-red-900/30">
                     <div className="text-center">
-                      <div className="font-bold text-red-600 dark:text-red-400">
+                      <div className="font-bold text-lg text-red-600 dark:text-red-400">
                         {user._count?.posts || 0}
                       </div>
-                      <div className="text-xs text-muted-foreground">Posts</div>
+                      <div className="text-xs text-muted-foreground mt-1 block md:hidden">Posts</div>
+                      <div className="hidden md:flex justify-center mt-1">
+                        <FileText className="w-4 h-4 text-muted-foreground" />
+                      </div>
                     </div>
-                    <div className="text-center border-l border-r border-red-200 dark:border-red-800">
-                      <div className="font-bold text-red-600 dark:text-red-400">
+                    <div className="text-center border-x border-red-200 dark:border-red-800">
+                      <div className="font-bold text-lg text-red-600 dark:text-red-400">
                         {user._count?.followers || 0}
                       </div>
-                      <div className="text-xs text-muted-foreground">Followers</div>
+                      <div className="text-xs text-muted-foreground mt-1 block md:hidden">Followers</div>
+                      <div className="hidden md:flex justify-center mt-1">
+                        <UserCheck className="w-4 h-4 text-muted-foreground" />
+                      </div>
                     </div>
                     <div className="text-center">
-                      <div className="font-bold text-red-600 dark:text-red-400">
+                      <div className="font-bold text-lg text-red-600 dark:text-red-400">
                         {user._count?.following || 0}
                       </div>
-                      <div className="text-xs text-muted-foreground">Following</div>
+                      <div className="text-xs text-muted-foreground mt-1 block md:hidden">Following</div>
+                      <div className="hidden md:flex justify-center mt-1">
+                        <UserPlus className="w-4 h-4 text-muted-foreground" />
+                      </div>
                     </div>
                   </div>
                 </Card>

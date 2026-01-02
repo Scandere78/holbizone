@@ -152,6 +152,96 @@ export async function getAllUsers() {
   }
 }
 
+export async function getUserFollowers(targetUserId: string) {
+  try {
+    const currentUserId = await getDbUserId();
+
+    const followers = await prisma.follows.findMany({
+      where: {
+        followingId: targetUserId,
+      },
+      select: {
+        follower: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+            bio: true,
+            _count: {
+              select: {
+                followers: true,
+                following: true,
+                posts: true,
+              },
+            },
+            followers: currentUserId
+              ? {
+                  where: {
+                    followerId: currentUserId,
+                  },
+                  select: {
+                    followerId: true,
+                  },
+                }
+              : false,
+          },
+        },
+      },
+    });
+
+    return followers.map((f) => f.follower);
+  } catch (error) {
+    console.log("Error fetching followers", error);
+    return [];
+  }
+}
+
+export async function getUserFollowing(targetUserId: string) {
+  try {
+    const currentUserId = await getDbUserId();
+
+    const following = await prisma.follows.findMany({
+      where: {
+        followerId: targetUserId,
+      },
+      select: {
+        following: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+            bio: true,
+            _count: {
+              select: {
+                followers: true,
+                following: true,
+                posts: true,
+              },
+            },
+            followers: currentUserId
+              ? {
+                  where: {
+                    followerId: currentUserId,
+                  },
+                  select: {
+                    followerId: true,
+                  },
+                }
+              : false,
+          },
+        },
+      },
+    });
+
+    return following.map((f) => f.following);
+  } catch (error) {
+    console.log("Error fetching following", error);
+    return [];
+  }
+}
+
 export async function toggleFollow(targetUserId: string) {
   try {
     const userId = await getDbUserId();

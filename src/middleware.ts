@@ -1,3 +1,5 @@
+// Middleware Clerk : protège les routes sauf celles publiques et API
+
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isPublicRoute = createRouteMatcher([
