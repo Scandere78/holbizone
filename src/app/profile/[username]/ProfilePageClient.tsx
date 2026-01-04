@@ -97,16 +97,28 @@ function ProfilePageClient({
     }));
   }, [likedPosts]);
 
-  const handleEditSubmit = async () => {
-    const formData = new FormData();
-    Object.entries(editForm).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
+  const [isUpdating, setIsUpdating] = useState(false);
 
-    const result = await updateProfile(formData);
-    if (result.success) {
-      setShowEditDialog(false);
-      toast.success("Profile updated successfully");
+  const handleEditSubmit = async () => {
+    setIsUpdating(true);
+    try {
+      const formData = new FormData();
+      Object.entries(editForm).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+
+      const result = await updateProfile(formData);
+      if (result.success) {
+        setShowEditDialog(false);
+        toast.success("Profil mis à jour avec succès");
+      } else {
+        toast.error(result.error || "Erreur lors de la mise à jour du profil");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error("Erreur lors de la mise à jour du profil");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -304,9 +316,13 @@ function ProfilePageClient({
             </div>
             <div className="flex justify-end gap-3">
               <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
+                <Button type="button" variant="outline" disabled={isUpdating}>
+                  Annuler
+                </Button>
               </DialogClose>
-              <Button onClick={handleEditSubmit}>Save Changes</Button>
+              <Button type="button" onClick={handleEditSubmit} disabled={isUpdating}>
+                {isUpdating ? "Sauvegarde..." : "Sauvegarder"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

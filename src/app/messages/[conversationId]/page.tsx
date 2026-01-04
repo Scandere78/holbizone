@@ -2,12 +2,24 @@ import { getConversationMessages, getUserConversations } from "@/actions/message
 import { getDbUserId } from "@/actions/user.action";
 import { notFound } from "next/navigation";
 import ChatHeader from "@/components/messages/ChatHeader";
-import MessageInput from "@/components/messages/MessageInput";
-import MessageList from "@/components/messages/MessageList";
 import ConversationList from "@/components/messages/ConversationList";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+/**
+ * MessageContainer utilise dynamic import avec ssr: false
+ *
+ * RAISON:
+ * - MessageContainer contient MessageList qui utilise Pusher (WebSocket)
+ * - Pusher ne peut fonctionner que côté client (pas de WebSocket côté serveur Next.js)
+ * - On désactive le SSR pour ce composant uniquement
+ * - Le reste de la page (header, conversations) est toujours SSR
+ */
+const MessageContainer = dynamic(() => import("@/components/messages/MessageContainer"), {
+  ssr: false,
+});
 
 interface ChatPageProps {
   params: {
@@ -72,12 +84,11 @@ async function ChatPage({ params }: ChatPageProps) {
             image={conversation.image}
             otherUser={otherMember?.user}
           />
-          <MessageList
+          <MessageContainer
             conversationId={conversationId}
             initialMessages={messages}
             currentUserId={currentUserId}
           />
-          <MessageInput conversationId={conversationId} />
         </div>
       </div>
     </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { sendMessage } from "@/actions/message.action";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,38 +8,71 @@ import { ImageIcon, SendHorizontal } from "lucide-react";
 import { UploadButton } from "@/lib/uploadthing";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
+import { MessageListRef } from "./MessageList";
 
 interface MessageInputProps {
   conversationId: string;
+  messageListRef: React.RefObject<MessageListRef>; // Référence vers MessageList pour les mises à jour optimistes
 }
 
-export default function MessageInput({ conversationId }: MessageInputProps) {
-  const router = useRouter();
+/**
+ * Composant pour envoyer des messages
+ *
+ * IMPORTANT: Ce composant utilise des mises à jour optimistes pour afficher
+ * les messages instantanément sans attendre le serveur.
+ *
+ * Fonctionnement:
+ * 1. L'utilisateur tape un message et clique sur Envoyer
+ * 2. Le message est effacé de l'input IMMÉDIATEMENT (meilleure UX)
+ * 3. Le message est envoyé au serveur
+ * 4. Si succès: le message est ajouté à la liste via addOptimisticMessage
+ * 5. Si échec: le message est restauré dans l'input pour réessayer
+ */
+export default function MessageInput({ conversationId, messageListRef }: MessageInputProps) {
   const [content, setContent] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   const handleSend = async () => {
+    // Validation: au moins du texte ou une image
     if (!content.trim() && !image) return;
 
+    // Sauvegarder les valeurs avant de les effacer
+    const messageContent = content.trim();
+    const messageImage = image;
+
+    // ✅ Effacer l'input IMMÉDIATEMENT pour une meilleure UX
+    // L'utilisateur voit que son message est en cours d'envoi
+    setContent("");
+    setImage(null);
     setIsSending(true);
+
     try {
+      // Envoyer le message au serveur
+      // IMPORTANT: L'autorisation est vérifiée côté serveur (pas besoin de useUser ici)
       const result = await sendMessage({
         conversationId,
-        content: content.trim(),
-        image: image || undefined,
+        content: messageContent,
+        image: messageImage || undefined,
       });
 
-      if (result.success) {
-        setContent("");
-        setImage(null);
-        router.refresh();
+      if (result.success && result.message) {
+        // ✅ MISE À JOUR OPTIMISTE: Ajouter le message à la liste IMMÉDIATEMENT
+        // Le message apparaît instantanément sans attendre de refresh
+        // Pusher va aussi envoyer le message, mais on évite les doublons avec la vérification par ID
+        messageListRef.current?.addOptimisticMessage(result.message);
       } else {
-        toast.error("Erreur lors de l'envoi du message");
+        // ❌ Échec: Restaurer le contenu pour que l'utilisateur puisse réessayer
+        setContent(messageContent);
+        setImage(messageImage);
+        toast.error(result.error || "Erreur lors de l'envoi du message");
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      // ❌ Erreur: Restaurer le contenu pour que l'utilisateur puisse réessayer
+      setContent(messageContent);
+      setImage(messageImage);
       toast.error("Erreur lors de l'envoi du message");
     } finally {
       setIsSending(false);

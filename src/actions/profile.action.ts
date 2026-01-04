@@ -209,16 +209,16 @@ export async function updateProfile(formData: FormData) {
     return { success: true, user };
   } catch (error) {
     console.error("Error updating profile:", error);
-    
-    // CORRIGÉ: issues au lieu de errors
+
+    // Gestion des erreurs de validation Zod
     if (error instanceof z.ZodError) {
-      return { 
-        success: false, 
-        error: error.issues[0]?.message || "Données invalides" 
+      return {
+        success: false,
+        error: error.issues[0]?.message || "Données invalides"
       };
     }
-    
-    return { success: false, error: "Failed to update profile" };
+
+    return { success: false, error: "Erreur lors de la mise à jour du profil" };
   }
 }
 

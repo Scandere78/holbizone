@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { getPusherClient } from "@/lib/pusher";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Image from "next/image";
 
-interface Message {
+// Type pour un message
+export interface Message {
   id: string;
   content: string;
   image?: string | null;
@@ -22,44 +23,78 @@ interface Message {
 
 interface MessageListProps {
   conversationId: string;
-  initialMessages: Message[];
+  initialMessages: Message[]; // Messages chargés depuis le serveur au début
   currentUserId: string;
 }
 
-export default function MessageList({
+// Interface exposée via ref pour permettre à MessageInput d'ajouter des messages
+export interface MessageListRef {
+  addOptimisticMessage: (message: Message) => void;
+}
+
+/**
+ * Composant qui affiche la liste des messages
+ *
+ * ARCHITECTURE IMPORTANTE:
+ * - Utilise forwardRef pour exposer addOptimisticMessage à MessageInput
+ * - Écoute les nouveaux messages via Pusher (WebSocket) pour les mises à jour en temps réel
+ * - Évite les doublons en vérifiant les IDs avant d'ajouter un message
+ * - Auto-scroll vers le bas quand un nouveau message arrive
+ */
+const MessageList = forwardRef<MessageListRef, MessageListProps>(({
   conversationId,
   initialMessages,
   currentUserId,
-}: MessageListProps) {
+}, ref) => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll vers le bas
+  // ✅ Exposer la méthode addOptimisticMessage via ref
+  // Permet à MessageInput d'ajouter un message instantanément à la liste
+  useImperativeHandle(ref, () => ({
+    addOptimisticMessage: (message: Message) => {
+      setMessages((prev) => {
+        // Vérifier si le message existe déjà (éviter les doublons)
+        const exists = prev.some((msg) => msg.id === message.id);
+        if (exists) return prev;
+        // Ajouter le nouveau message à la fin
+        return [...prev, message];
+      });
+    },
+  }));
+
+  // ✅ Auto-scroll vers le bas quand un nouveau message arrive
+  // S'exécute à chaque fois que la liste de messages change
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // WebSocket - Écouter les nouveaux messages
+  // ✅ WebSocket - Écouter les nouveaux messages en temps réel via Pusher
+  // Permet de recevoir les messages des autres utilisateurs instantanément
   useEffect(() => {
     let channel: any = null;
 
+    // Initialiser le client Pusher (peut être null si pas configuré)
     getPusherClient().then((pusher) => {
-      if (!pusher) return;
+      if (!pusher) return; // Pusher n'est pas configuré, skip
 
+      // S'abonner au canal de cette conversation
       channel = pusher.subscribe(`conversation-${conversationId}`);
 
+      // Écouter l'événement "new-message"
       channel.bind("new-message", (newMessage: Message) => {
-        // Éviter les doublons
+        // Ajouter le message à la liste en évitant les doublons
         setMessages((prev) => {
           const exists = prev.some((msg) => msg.id === newMessage.id);
-          if (exists) return prev;
+          if (exists) return prev; // Message déjà dans la liste
           return [...prev, newMessage];
         });
       });
     });
 
+    // Cleanup: se désabonner quand le composant est démonté
     return () => {
       if (channel) {
         channel.unbind("new-message");
@@ -140,4 +175,8 @@ export default function MessageList({
       )}
     </div>
   );
-}
+});
+
+MessageList.displayName = "MessageList";
+
+export default MessageList;
